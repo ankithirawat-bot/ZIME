@@ -26,7 +26,11 @@ The goal is to build an AI Portfolio Manager that automatically discovers high-q
 - **Sprint 11** -- Command Line Interface (CLI)
 - **Sprint 12** -- Explainable Research Report (rule-based)
 - **Sprint 13** -- Market Regime Engine
-- **Sprint 14** -- Relative Strength Engine
+- **Sprint 14** -- Relative Strength Engine (weighted multi-timeframe returns)
+- **Sprint 15** -- Trend Quality Engine (structural trend health, trend stages)
+- **Sprint 16** -- Pattern Recognition Engine (plugin-based, 5 detectors)
+- **Sprint 17** -- Volume Intelligence Engine (institutional-quality volume analysis)
+- **Sprint 18** -- Composite Decision Engine (weighted multi-engine scoring)
 - **Engineering Foundation** -- pyproject.toml, AGENTS.md, .editorconfig, docs
 
 ---
@@ -303,3 +307,117 @@ Each recommendation should include:
 - Confidence based on data completeness (missing benchmarks, insufficient history)
 - Pure functions, frozen dataclasses
 - All tests use mock StockSnapshot objects — no internet
+
+---
+
+## Sprint 15 — Trend Quality Engine
+
+**Status:** COMPLETE
+
+**Goal:** Evaluate the structural quality of a stock's trend — whether it is healthy, persistent, and investable. This is one of the highest-weighted components of the ZIME Decision Engine.
+
+**Deliverables:**
+- `backend/trend/__init__.py` -- Package init
+- `backend/trend/models.py` -- TrendSnapshot, TrendResult, TrendQuality, TrendStage dataclasses
+- `backend/trend/trend_engine.py` -- rule-based scoring and classification
+- `backend/trend/test_trend_engine.py` -- 62 tests covering all trend tiers, stages, alignment, slopes, structure, persistence, missing data, confidence
+
+**Test Count:** 62
+
+**Key Design Decisions:**
+- 100% deterministic rules — no AI/LLM
+- Scoring: MA alignment (+20), price position (+15), slopes (+20), structure (+20), persistence (+10), 52-week position (+15) = max 100
+- Quality: Exceptional (90+), Strong (75-89), Healthy (55-74), Weak (35-54), Broken (<35)
+- Stage: Early (<20 bars), Established (20-120), Extended (>120 + >20% above EMA20), Late (>120), Broken
+- MA alignment: counts correctly ordered adjacent pairs (EMA20→EMA50→SMA150→SMA200)
+- Structure: (higher_high_count + higher_low_count) × 4, max 20
+- Persistence: trend_age thresholds (0, <20, 20-60, 60-120, 120+)
+- Price extension warning: >20% above EMA20
+- Missing data generates warnings and reduces confidence
+- Pure functions, frozen dataclasses
+- All tests use mock TrendSnapshot objects — no internet
+- Future-ready: architecture supports ADX, Supertrend, linear regression without interface changes
+
+---
+
+## Sprint 16 — Pattern Recognition Engine
+
+**Status:** COMPLETE
+
+**Goal:** Implement a plugin-based pattern detection engine that identifies actionable chart patterns and provides breakout entry/exit levels.
+
+**Deliverables:**
+- `backend/patterns/__init__.py` -- Package init
+- `backend/patterns/base.py` -- PatternDetector abstract base class
+- `backend/patterns/models.py` -- PatternSnapshot, PatternResult, PatternType dataclasses
+- `backend/patterns/engine.py` -- PatternEngine orchestrator with plugin registry
+- `backend/patterns/detectors/vcp.py` -- VCP detector (35+20+20+15+10 scoring)
+- `backend/patterns/detectors/flat_base.py` -- Flat base detector
+- `backend/patterns/detectors/ascending_triangle.py` -- Ascending triangle detector
+- `backend/patterns/detectors/cup_handle.py` -- Cup & handle detector
+- `backend/patterns/detectors/high_tight_flag.py` -- High tight flag detector
+- `tests/test_pattern_engine.py` -- 62 tests covering all detectors, entry/exit, missing data, confidence
+- `tests/test_vcp.py` -- 31 VCP-specific tests
+- `tests/test_flat_base.py` -- 10 flat base tests
+
+**Test Count:** 103
+
+**Key Design Decisions:**
+- Plugin architecture: all detectors inherit from PatternDetector ABC
+- Each detector has a `detect()` method returning PatternResult or None
+- PatternEngine aggregates results from all detectors
+- Entry/exit calculations: pivot, breakout, stop-loss, risk/reward
+- Missing data returns None (no pattern detected) — never crashes
+- Confidence based on data quality and pattern clarity
+
+---
+
+## Sprint 17 — Volume Intelligence Engine
+
+**Status:** COMPLETE
+
+**Goal:** Implement a volume intelligence engine that evaluates institutional-quality volume patterns for accumulation, distribution, and breakout confirmation.
+
+**Deliverables:**
+- `backend/volume/__init__.py` -- Package init
+- `backend/volume/models.py` -- VolumeSnapshot, VolumeResult, VolumeQuality dataclasses
+- `backend/volume/volume_engine.py` -- VolumeEngine class with `evaluate()` method
+- `backend/volume/test_volume_engine.py` -- 44 tests covering all volume components, missing data, confidence
+
+**Test Count:** 44
+
+**Key Design Decisions:**
+- Scoring: RVOL (+20), Breakout (+20), Dryup (+15), Accumulation (+20), Distribution (-15), Institutional (+10) = max 100
+- Quality: Exceptional (90+), Strong (75-89), Healthy (55-74), Weak (35-54), Poor (<35)
+- RVOL: 1.0-1.5 optimal, 1.5-2.0 high, 2.0-3.0 excessive, >3.0 dangerous
+- Dry-up: <0.3x average signals consolidation before breakout
+- Accumulation: positive close + volume surge = institutional buying
+- Distribution: negative close + volume surge = institutional selling
+- Missing data generates warnings and reduces confidence
+- All tests use mock VolumeSnapshot objects — no internet
+
+---
+
+## Sprint 18 — Composite Decision Engine
+
+**Status:** COMPLETE
+
+**Goal:** Combine outputs of all analysis engines (market regime, relative strength, trend quality, pattern recognition, volume intelligence) into a single investment decision with weighted scoring and gating rules.
+
+**Deliverables:**
+- `backend/composite/__init__.py` -- Package init
+- `backend/composite/models.py` -- CompositeResult, InvestmentGrade, Recommendation dataclasses
+- `backend/composite/composite_engine.py` -- CompositeEngine class with `evaluate()` method
+- `tests/test_composite_engine.py` -- 22 tests covering weighted scoring, gating rules, grade classification, position sizing, confidence, recommendations, reasons aggregation
+
+**Test Count:** 22
+
+**Key Design Decisions:**
+- Engine weights: Market 15%, RS 20%, Trend 25%, Pattern 20%, Volume 20%
+- Grades: A+ (95+), A (90+), A- (85+), B+ (80+), B (75+), B- (70+), C (60+), D (50+), F (<50)
+- Recommendations: Strong Buy (95+), Buy (85+), Watchlist (75+), Monitor (60+), Avoid (<60)
+- Position sizing: 0-25% based on score, capped at 10% for weak RS
+- Gating rules: Bear market → Monitor, Broken trend → Monitor, Weak pattern → no Strong Buy
+- Confidence calculated from signal agreement (variance penalty) and data completeness
+- Reasons/warnings aggregated from all engines with deduplication
+- All tests use mock engine results — no internet
