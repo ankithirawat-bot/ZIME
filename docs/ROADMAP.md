@@ -218,3 +218,28 @@ Each recommendation should include:
 - Graceful error handling: invalid args, unknown factor, provider failure
 - No stack traces exposed to users
 - All tests mock ResearchService — no internet, no yfinance
+
+---
+
+## Sprint 12 -- Explainable Research Report
+
+**Status:** COMPLETE
+
+**Goal:** Convert raw factor results into deterministic, human-readable research reports using rule-based interpretation.
+
+**Deliverables:**
+- `backend/reporting/__init__.py` -- Reporting package init
+- `backend/reporting/models.py` -- ResearchReport, Section, DataSummary dataclasses
+- `backend/reporting/report_builder.py` -- rule-based interpretation (trend, momentum, volatility, warnings, summary)
+- `backend/reporting/test_reporting.py` -- 47 tests covering all interpretation rules
+
+**Test Count:** 47
+
+**Key Design Decisions:**
+- 100% deterministic rules — no AI/LLM
+- Trend: MA alignment (bullish/bearish/mixed)
+- Momentum: RSI zones, MACD crossovers, ROC direction, Williams %R, Stochastic
+- Volatility: ATR states, Bollinger bandwidth and position
+- Warnings: missing indicators, failed factors, insufficient history
+- Overall summary generated from section interpretations
+- Pure functions, no side effects
