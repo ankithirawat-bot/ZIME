@@ -194,3 +194,27 @@ Each recommendation should include:
 - ResearchService accepts optional `provider` param, defaults to YFinanceProvider
 - No yfinance import in ResearchService — fully decoupled
 - All existing tests pass unchanged (regression verified)
+
+---
+
+## Sprint 11 -- Command Line Interface (CLI)
+
+**Status:** COMPLETE
+
+**Goal:** Create a production-quality CLI exposing the ResearchService.
+
+**Deliverables:**
+- `backend/cli/__init__.py` -- CLI package init
+- `backend/cli/main.py` -- argparse-based CLI with `analyze` command
+- `backend/cli/formatter.py` -- terminal output formatting
+- `backend/cli/test_cli.py` -- 54 tests covering parser, factor parsing, analysis, errors, help, formatting
+
+**Test Count:** 54
+
+**Key Design Decisions:**
+- CLI delegates entirely to ResearchService — no business logic
+- `parse_factor()` handles `EMA:20`, `RSI:14`, `MACD` formats
+- Multiple `--factor` arguments supported
+- Graceful error handling: invalid args, unknown factor, provider failure
+- No stack traces exposed to users
+- All tests mock ResearchService — no internet, no yfinance
