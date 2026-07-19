@@ -21,6 +21,12 @@ The goal is to build an AI Portfolio Manager that automatically discovers high-q
 - **Sprint 6** -- 5 momentum factors (RSI, MACD, ROC, Williams %R, Stochastic Oscillator)
 - **Sprint 7** -- FactorEngine (batch execution engine)
 - **Sprint 8** -- ResearchService (end-to-end research orchestration)
+- **Sprint 9** -- Research API (FastAPI endpoints)
+- **Sprint 10** -- Market Data Provider Abstraction
+- **Sprint 11** -- Command Line Interface (CLI)
+- **Sprint 12** -- Explainable Research Report (rule-based)
+- **Sprint 13** -- Market Regime Engine
+- **Sprint 14** -- Relative Strength Engine
 - **Engineering Foundation** -- pyproject.toml, AGENTS.md, .editorconfig, docs
 
 ---
@@ -243,3 +249,57 @@ Each recommendation should include:
 - Warnings: missing indicators, failed factors, insufficient history
 - Overall summary generated from section interpretations
 - Pure functions, no side effects
+
+---
+
+## Sprint 13 -- Market Regime Engine
+
+**Status:** COMPLETE
+
+**Goal:** Implement a deterministic Market Regime Engine that evaluates overall market conditions and classifies the environment.
+
+**Deliverables:**
+- `backend/regime/__init__.py` -- Regime package init
+- `backend/regime/models.py` -- MarketSnapshot, IndexData, BreadthData, MarketRegime, Regime dataclasses
+- `backend/regime/regime_engine.py` -- rule-based scoring and classification
+- `backend/regime/test_regime.py` -- 38 tests covering all regimes, missing data, confidence
+
+**Test Count:** 38
+
+**Key Design Decisions:**
+- 100% deterministic rules — no AI/LLM
+- Scoring: trend (+45), momentum (+10), breadth (+35), VIX (+/-5) = max 100
+- Classification: Strong Bull (90+), Bull (75-89), Neutral (55-74), Weak (35-54), Bear (<35)
+- Confidence based on data completeness
+- Pure functions, frozen dataclasses
+- All tests use mock MarketSnapshot objects — no internet
+
+---
+
+## Sprint 14 -- Relative Strength Engine
+
+**Status:** COMPLETE
+
+**Goal:** Implement a Relative Strength Engine that identifies whether a stock is a true market leader by comparing its performance against market, sector, and industry benchmarks.
+
+**Deliverables:**
+- `backend/relative_strength/__init__.py` -- Package init
+- `backend/relative_strength/models.py` -- StockSnapshot, BenchmarkData, RelativeStrengthResult, Leadership dataclasses
+- `backend/relative_strength/rs_engine.py` -- rule-based scoring and classification
+- `backend/relative_strength/test_rs_engine.py` -- 55 tests covering weighted returns, leadership tiers, outperformance, missing data, confidence
+
+**Test Count:** 55
+
+**Key Design Decisions:**
+- 100% deterministic rules — no AI/LLM
+- Weighted multi-timeframe returns: 1M=10%, 3M=20%, 6M=30%, 12M=40%
+- Scoring: market vs Nifty (+30), sector (+25), industry (+15), 52-week high distance (+20), relative momentum (+10) = max 100
+- Classification: Leader (90+), Strong (75-89), Average (55-74), Weak (35-54), Laggard (<35)
+- Outperformance thresholds: >20% → max, 10-20% → 0.67x, 0-10% → 0.33x, ≤0 → 0
+- High score: within 5% → max, 5-10% → 0.75x, 10-20% → 0.5x, >20% → 0
+- Relative momentum: acceleration = (stock_1m - market_1m) - (stock_1y - market_1y)
+- Missing returns detection generates warnings and reduces confidence
+- `low_52w` field added to StockSnapshot for future use
+- Confidence based on data completeness (missing benchmarks, insufficient history)
+- Pure functions, frozen dataclasses
+- All tests use mock StockSnapshot objects — no internet
