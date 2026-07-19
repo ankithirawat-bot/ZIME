@@ -170,3 +170,27 @@ Each recommendation should include:
 - Stack traces never exposed to clients
 - ResearchService mocked in all tests — no internet, no yfinance
 - OpenAPI schema auto-generated with request/response models and examples
+
+---
+
+## Sprint 10 -- Market Data Provider Abstraction
+
+**Status:** COMPLETE
+
+**Goal:** Decouple ResearchService from yfinance by introducing a provider interface.
+
+**Deliverables:**
+- `backend/providers/__init__.py` -- Providers package init
+- `backend/providers/base.py` -- MarketDataProvider ABC with `get_history()` abstract method
+- `backend/providers/yfinance_provider.py` -- YFinanceProvider implementation
+- `backend/providers/test_providers.py` -- 47 tests covering interface, DI, mocked provider scenarios, FakeProvider concrete implementation
+- `backend/services/research_service.py` -- Refactored for dependency injection (provider param)
+
+**Test Count:** 47
+
+**Key Design Decisions:**
+- MarketDataProvider ABC defines `get_history(symbol, period, interval) -> DataFrame | None`
+- YFinanceProvider encapsulates all yfinance-specific logic
+- ResearchService accepts optional `provider` param, defaults to YFinanceProvider
+- No yfinance import in ResearchService — fully decoupled
+- All existing tests pass unchanged (regression verified)

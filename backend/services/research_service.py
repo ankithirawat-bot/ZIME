@@ -18,6 +18,8 @@ import pandas as pd
 
 from backend.engines.factor_engine import EngineError, FactorEngine, FactorRequest
 from backend.core.factor_result import FactorResult
+from backend.providers.base import MarketDataProvider
+from backend.providers.yfinance_provider import YFinanceProvider
 
 import backend.factors.price  # noqa: F401 — triggers factor registration
 import backend.factors.momentum  # noqa: F401 — triggers factor registration
@@ -66,8 +68,9 @@ class ResearchService:
     requested factors through the FactorEngine. Returns a structured
     ResearchResult with all factor outputs and any errors.
 
-    The data provider is isolated in ``_download_history()`` for future
-    replacement. Currently uses yfinance.
+    The data provider is injected via the ``provider`` parameter.
+    Defaults to YFinanceProvider. Any MarketDataProvider implementation
+    can be used.
 
     This service never crashes. All errors are captured in the result.
 
@@ -86,6 +89,14 @@ class ResearchService:
         for label, fr in result.factor_results.items():
             print(f"{label}: {fr.value}")
     """
+
+    def __init__(self, provider: MarketDataProvider | None = None) -> None:
+        """Initialize the research service.
+
+        Args:
+            provider: Market data provider instance. Defaults to YFinanceProvider.
+        """
+        self._provider = provider if provider is not None else YFinanceProvider()
 
     def analyze(
         self,
@@ -176,7 +187,7 @@ class ResearchService:
 
         # Download data
         try:
-            data = self._download_history(symbol, period, interval)
+            data = self._provider.get_history(symbol, period, interval)
         except Exception as exc:
             return self._error_result(
                 symbol=symbol,
@@ -258,34 +269,6 @@ class ResearchService:
             engine_errors=engine_result.errors,
             metadata=metadata,
         )
-
-    def _download_history(
-        self,
-        symbol: str,
-        period: str,
-        interval: str,
-    ) -> pd.DataFrame | None:
-        """Download historical OHLCV data from the data provider.
-
-        Currently uses yfinance. This method is isolated so the
-        provider can be swapped without changing analyze() logic.
-
-        Args:
-            symbol:   Ticker symbol.
-            period:   Historical period.
-            interval: Data interval.
-
-        Returns:
-            A DataFrame with OHLCV columns, or None on failure.
-
-        Raises:
-            Exception: If the download fails (caller handles).
-        """
-        import yfinance as yf
-
-        ticker = yf.Ticker(symbol)
-        data = ticker.history(period=period, interval=interval)
-        return data
 
     def _error_result(
         self,
