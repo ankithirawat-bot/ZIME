@@ -1,0 +1,22 @@
+[project]
+name = "zime"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "Evidence-driven investment research platform for the Indian stock market"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

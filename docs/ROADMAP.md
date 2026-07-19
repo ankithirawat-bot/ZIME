@@ -1,4 +1,4 @@
-# ZIME Roadmap
+﻿# ZIME Roadmap
 
 ## Vision
 
@@ -10,52 +10,69 @@ The goal is to build an AI Portfolio Manager that automatically discovers high-q
 
 ---
 
-## Phase 1 – Foundation ✅
+## Completed Milestones
 
-- Project setup
-- PostgreSQL database
-- SQLAlchemy
-- FastAPI
-- Company master
-- Historical price importer
-- Duplicate protection
+- **Capability 001** -- Core Factor Framework (BaseFactor, FactorRegistry, FactorResult, enums)
+- **M2.1** -- Simple Moving Average (SMA) factor
+- **M2.2** -- Exponential Moving Average (EMA) factor
+- **Engineering Foundation** -- pyproject.toml, AGENTS.md, .editorconfig, docs
 
 ---
 
-## Phase 2 – Data Engine
+## Phase 1 -- Foundation
 
-- Historical prices
-- Daily updates
-- Corporate actions
-- Financial statements
-- Shareholding data
-- News ingestion
-
----
-
-## Phase 3 – Analytics Engine
-
-- Technical indicators
-- Financial ratios
-- Growth metrics
-- Quality metrics
-- Risk metrics
+- [x] Project setup
+- [x] PostgreSQL database
+- [x] SQLAlchemy
+- [x] FastAPI
+- [x] Company master
+- [x] Historical price importer
+- [x] Duplicate protection
+- [x] Core factor framework (BaseFactor, FactorRegistry, FactorResult)
+- [x] Engineering infrastructure (pyproject.toml, AGENTS.md, .editorconfig)
 
 ---
 
-## Phase 4 – Intelligence Engine
+## Phase 2 -- Data Engine
 
-- AI stock ranking
-- Quality score
-- Growth score
-- Value score
-- Momentum score
-- Risk score
-- Overall score
+- [ ] Historical prices (proper model + repository)
+- [ ] Daily updates
+- [ ] Corporate actions
+- [ ] Financial statements
+- [ ] Shareholding data
+- [ ] News ingestion
 
 ---
 
-## Phase 5 – Opportunity Engine
+## Phase 3 -- Analytics Engine
+
+- [x] SMA factor (price)
+- [x] EMA factor (price)
+- [ ] RSI (momentum)
+- [ ] MACD (momentum)
+- [ ] Bollinger Bands (price)
+- [ ] ATR (risk)
+- [ ] OBV (volume)
+- [ ] Financial ratios (fundamentals)
+- [ ] Growth metrics (fundamentals)
+- [ ] Quality metrics (fundamentals)
+- [ ] Risk metrics (risk)
+
+---
+
+## Phase 4 -- Intelligence Engine
+
+- [ ] AI stock ranking
+- [ ] Quality score
+- [ ] Growth score
+- [ ] Value score
+- [ ] Momentum score
+- [ ] Risk score
+- [ ] Overall score
+
+---
+
+## Phase 5 -- Opportunity Engine
 
 Daily opportunities for:
 
@@ -76,7 +93,7 @@ Each recommendation should include:
 
 ---
 
-## Phase 6 – Portfolio Intelligence
+## Phase 6 -- Portfolio Intelligence
 
 - Portfolio analysis
 - Allocation suggestions
@@ -85,7 +102,7 @@ Each recommendation should include:
 
 ---
 
-## Phase 7 – AI Research Assistant
+## Phase 7 -- AI Research Assistant
 
 - Compare companies
 - Explain earnings
