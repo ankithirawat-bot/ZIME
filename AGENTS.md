@@ -75,3 +75,40 @@ Before completing any task:
 3. Ruff lint clean
 4. No unrelated files modified
 5. Documentation updated if architecture changed
+
+# Project Storage Policy
+
+## Primary Development Drive
+
+The ZIME project is hosted on **D:**.
+
+### Rules
+
+- Keep all source code inside the project directory on D:.
+- Keep all generated reports inside the project directory.
+- Keep all logs inside the project directory.
+- Keep all datasets inside the project directory.
+- Keep all exported files inside the project directory.
+- Keep all project-owned configuration files inside the project directory.
+
+Do **NOT** intentionally create project files under:
+
+- C:\Users\
+- C:\Temp\
+- C:\Projects\
+- %LOCALAPPDATA%
+- %APPDATA%
+
+### Exceptions
+
+The following are acceptable because they are operating system or tool managed:
+
+- Python cache (`__pycache__`)
+- pip cache
+- pytest cache
+- virtual environment metadata
+- Windows temporary files
+- Git internal files
+- Visual Studio Code cache
+
+If a tool needs a temporary working directory, prefer using a location inside the project on D: whenever practical.
