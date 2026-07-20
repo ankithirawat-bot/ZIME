@@ -7,11 +7,15 @@ investment decision using weighted normalization and gating rules.
 
 from __future__ import annotations
 
+import statistics
+
 from backend.composite.models import (
     CompositeResult,
+    DecisionTrace,
     InvestmentGrade,
     Recommendation,
 )
+from backend.core.constants import MAX_ITEMS
 from backend.patterns.models import PatternResult
 from backend.regime.models import MarketRegime, Regime
 from backend.relative_strength.models import RelativeStrengthResult
@@ -25,9 +29,6 @@ _W_TREND = 25
 _W_PATTERN = 20
 _W_VOLUME = 20
 _MAX_WEIGHTED = 100
-
-# Maximum reasons/warnings
-_MAX_ITEMS = 15
 
 
 class CompositeEngine:
@@ -58,6 +59,7 @@ class CompositeEngine:
         """
         reasons: list[str] = []
         warnings: list[str] = []
+        failed_gates: list[str] = []
 
         # Extract raw scores (0-100)
         market_raw = self._extract_market_score(market_regime, warnings)
@@ -75,6 +77,15 @@ class CompositeEngine:
 
         overall_score = market_score + rs_score + trend_score + pattern_score + volume_score
 
+        # Create decision trace
+        decision_trace = DecisionTrace(
+            market_contribution=round(market_score, 2),
+            relative_strength_contribution=round(rs_score, 2),
+            trend_contribution=round(trend_score, 2),
+            pattern_contribution=round(pattern_score, 2),
+            volume_contribution=round(volume_score, 2),
+        )
+
         # Aggregate reasons and warnings from all engines
         self._collect_reasons(reasons, market_regime, relative_strength, trend, pattern, volume)
         self._collect_warnings(warnings, market_regime, relative_strength, trend, pattern, volume)
@@ -82,10 +93,11 @@ class CompositeEngine:
         # Apply gating rules
         recommendation = self._apply_gating(
             overall_score, market_regime, trend, pattern_raw, volume_raw, rs_raw,
+            failed_gates,
         )
 
         # Cap recommendation
-        recommendation = self._cap_recommendation(recommendation, overall_score)
+        recommendation = self._cap_recommendation(recommendation, overall_score, failed_gates)
 
         # Calculate position size
         position_size = self._calculate_position_size(overall_score, rs_raw)
@@ -109,8 +121,10 @@ class CompositeEngine:
             recommendation=recommendation,
             confidence=round(confidence, 2),
             position_size=position_size,
-            reasons=reasons[:_MAX_ITEMS],
-            warnings=warnings[:_MAX_ITEMS],
+            reasons=reasons[:MAX_ITEMS],
+            warnings=warnings[:MAX_ITEMS],
+            decision_trace=decision_trace,
+            failed_gates=failed_gates,
         )
 
     def _extract_market_score(
@@ -176,6 +190,7 @@ class CompositeEngine:
         pattern_raw: float,
         volume_raw: float,
         rs_raw: float,
+        failed_gates: list[str],
     ) -> Recommendation:
         """Apply gating rules and determine recommendation."""
         # Determine base recommendation from score
@@ -194,15 +209,23 @@ class CompositeEngine:
         if mr is not None and mr.regime == Regime.BEAR:
             if rec in (Recommendation.STRONG_BUY, Recommendation.BUY, Recommendation.WATCHLIST):
                 rec = Recommendation.MONITOR
+                failed_gates.append("Bear Market")
 
         # Rule 2: Broken trend caps at Monitor
         if trend is not None and trend.trend_quality == TrendQuality.BROKEN:
             if rec in (Recommendation.STRONG_BUY, Recommendation.BUY, Recommendation.WATCHLIST):
                 rec = Recommendation.MONITOR
+                failed_gates.append("Broken Trend")
 
         # Rule 3: Weak pattern cannot be Strong Buy
         if pattern_raw < 40 and rec == Recommendation.STRONG_BUY:
             rec = Recommendation.BUY
+            failed_gates.append("Weak Pattern")
+
+        # Rule 4: Weak RS cannot be Strong Buy
+        if rs_raw < 40 and rec == Recommendation.STRONG_BUY:
+            rec = Recommendation.BUY
+            failed_gates.append("Weak Relative Strength")
 
         return rec
 
@@ -210,11 +233,14 @@ class CompositeEngine:
         self,
         rec: Recommendation,
         score: float,
+        failed_gates: list[str],
     ) -> Recommendation:
         """Ensure recommendation matches score band."""
         if score < 60 and rec not in (Recommendation.AVOID, Recommendation.MONITOR):
+            failed_gates.append("Low Score")
             return Recommendation.AVOID
         if score < 75 and rec in (Recommendation.STRONG_BUY, Recommendation.BUY):
+            failed_gates.append("Low Score")
             return Recommendation.WATCHLIST
         return rec
 
@@ -253,7 +279,12 @@ class CompositeEngine:
         volume: float,
         warnings: list[str],
     ) -> float:
-        """Calculate confidence from signal agreement."""
+        """Calculate confidence from signal agreement.
+
+        Uses coefficient of variation to measure agreement between engines.
+        High agreement (low variance) increases confidence.
+        Large disagreement (high variance) decreases confidence.
+        """
         scores = [market, rs, trend, pattern, volume]
         present = [s for s in scores if s > 0]
 
@@ -261,17 +292,28 @@ class CompositeEngine:
             return 0.0
 
         avg = sum(present) / len(present)
+
+        # Base confidence from average
         conf = avg
 
-        # Bonus for agreement (low variance)
+        # Agreement adjustment using coefficient of variation
         if len(present) >= 3:
-            variance = sum((s - avg) ** 2 for s in present) / len(present)
-            if variance < 100:
-                conf += 10
-            elif variance > 400:
-                conf -= 10
+            stdev = statistics.pstdev(present)
+            cv = stdev / avg if avg > 0 else 1.0
 
-        # Penalty for weak components
+            # High agreement: cv < 0.15 → bonus
+            # Moderate agreement: 0.15-0.30 → no change
+            # Low agreement: > 0.30 → penalty
+            if cv < 0.15:
+                conf += 10
+            elif cv < 0.30:
+                pass
+            elif cv < 0.50:
+                conf -= 10
+            else:
+                conf -= 20
+
+        # Penalty for weak components (below 40)
         weak_count = sum(1 for s in scores if 0 < s < 40)
         conf -= weak_count * 5
 

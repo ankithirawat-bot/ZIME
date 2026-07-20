@@ -6,7 +6,7 @@ Data classes for combined investment decision scoring.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 
@@ -35,6 +35,25 @@ class Recommendation(StrEnum):
 
 
 @dataclass(frozen=True)
+class DecisionTrace:
+    """Trace of each engine's weighted contribution.
+
+    Attributes:
+        market_contribution:            Market regime weighted contribution.
+        relative_strength_contribution: Relative strength weighted contribution.
+        trend_contribution:             Trend quality weighted contribution.
+        pattern_contribution:           Pattern weighted contribution.
+        volume_contribution:            Volume weighted contribution.
+    """
+
+    market_contribution: float
+    relative_strength_contribution: float
+    trend_contribution: float
+    pattern_contribution: float
+    volume_contribution: float
+
+
+@dataclass(frozen=True)
 class CompositeResult:
     """Result of composite decision analysis.
 
@@ -51,6 +70,8 @@ class CompositeResult:
         position_size:          Suggested max allocation (0-1.0).
         reasons:                Aggregated explanations.
         warnings:               Aggregated warnings.
+        decision_trace:         Weighted contributions from each engine.
+        failed_gates:           Gating rules that changed the recommendation.
     """
 
     overall_score: float
@@ -65,3 +86,5 @@ class CompositeResult:
     position_size: float
     reasons: list[str]
     warnings: list[str]
+    decision_trace: DecisionTrace
+    failed_gates: list[str] = field(default_factory=list)
