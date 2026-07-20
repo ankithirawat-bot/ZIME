@@ -192,7 +192,7 @@ class TestProviderType:
         assert ProviderType.TEST == "test"
 
     def test_count(self):
-        assert len(ProviderType) == 11
+        assert len(ProviderType) == 12
 
     def test_is_str_enum(self):
         assert isinstance(ProviderType.NSE, str)

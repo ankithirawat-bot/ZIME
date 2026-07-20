@@ -56,6 +56,7 @@ class ProviderType(StrEnum):
     CSV = "csv"
     DATABASE = "database"
     TEST = "test"
+    UPSTOX = "upstox"
 
 
 @dataclass(frozen=True)
