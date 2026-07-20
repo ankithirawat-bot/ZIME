@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Optional
+from typing import Any
 
 from backend.core.enums import FactorCategory, Signal
 
@@ -58,8 +58,8 @@ class FactorResult:
     factor_name: str
     factor_category: FactorCategory
     symbol: str
-    value: Optional[float]
+    value: float | None
     signal: Signal
     as_of: date
-    confidence: Optional[float] = None
-    metadata: Optional[dict[str, Any]] = field(default=None)
+    confidence: float | None = None
+    metadata: dict[str, Any] | None = field(default=None)

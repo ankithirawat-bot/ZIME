@@ -7,6 +7,8 @@ Converts Composite Decision into an executable trade plan.
 from __future__ import annotations
 
 from backend.composite.models import CompositeResult, Recommendation
+from backend.core.constants import MAX_ITEMS
+from backend.core.validation import validate_price_relationship
 from backend.patterns.models import PatternResult
 from backend.trade.models import (
     EntryType,
@@ -15,9 +17,6 @@ from backend.trade.models import (
     TradePlan,
     TradeQuality,
 )
-
-# Maximum reasons/warnings
-_MAX_ITEMS = 15
 
 # Risk/reward thresholds
 _RR_STRONG_BUY = 3.0
@@ -60,12 +59,12 @@ class TradeEngine:
 
         # Validate stop < entry
         if entry_price is not None and stop_loss is not None:
-            if stop_loss >= entry_price:
+            if validate_price_relationship(entry_price, stop_loss):
+                validation_flags.append("VALID_STOP")
+            else:
                 validation_flags.append("INVALID_STOP")
                 warnings.append("Stop loss above entry price, trade rejected")
                 stop_loss = None
-            else:
-                validation_flags.append("VALID_STOP")
         else:
             validation_flags.append("INVALID_STOP")
 
@@ -132,10 +131,10 @@ class TradeEngine:
             position_size=position_size,
             trade_quality=trade_quality,
             execution_status=execution_status,
-            execution_checklist=execution_checklist[:_MAX_ITEMS],
+            execution_checklist=execution_checklist[:MAX_ITEMS],
             confidence=round(confidence, 2),
-            reasons=reasons[:_MAX_ITEMS],
-            warnings=warnings[:_MAX_ITEMS],
+            reasons=reasons[:MAX_ITEMS],
+            warnings=warnings[:MAX_ITEMS],
             decision_trace=decision_trace,
             validation_flags=validation_flags,
         )

@@ -7,6 +7,8 @@ Transforms a TradePlan into a capital-preserving execution plan.
 from __future__ import annotations
 
 from backend.composite.models import CompositeResult
+from backend.core.constants import DEFAULT_MAX_RISK, MAX_ITEMS, MIN_RR_ACCEPTABLE
+from backend.core.validation import validate_position_size, validate_price_relationship
 from backend.risk.models import (
     ExposureStatus,
     PortfolioRiskGrade,
@@ -16,15 +18,6 @@ from backend.risk.models import (
     TradeRiskGrade,
 )
 from backend.trade.models import ExecutionStatus, TradePlan
-
-# Maximum reasons/warnings
-_MAX_ITEMS = 15
-
-# Default maximum risk per trade (percent)
-_DEFAULT_MAX_RISK = 1.0
-
-# Risk/reward acceptance threshold
-_MIN_RR_ACCEPTABLE = 2.0
 
 # Exposure thresholds (percent)
 _EXPOSURE_LOW = 5.0
@@ -60,7 +53,7 @@ class RiskEngine:
         validation_flags: list[str] = []
 
         # Determine max risk percent
-        max_risk_percent = _DEFAULT_MAX_RISK
+        max_risk_percent = DEFAULT_MAX_RISK
 
         # Validate trade plan inputs
         entry_price = trade_plan.entry_price
@@ -159,8 +152,8 @@ class RiskEngine:
             decision_trace=decision_trace,
             validation_flags=validation_flags,
             confidence=round(confidence, 2),
-            reasons=reasons[:_MAX_ITEMS],
-            warnings=warnings[:_MAX_ITEMS],
+            reasons=reasons[:MAX_ITEMS],
+            warnings=warnings[:MAX_ITEMS],
         )
 
     def _validate_stop(
@@ -181,13 +174,13 @@ class RiskEngine:
             warnings.append("Missing entry price for stop validation")
             return False
 
-        if stop_loss >= entry_price:
-            validation_flags.append("INVALID_STOP")
-            warnings.append("Stop loss above entry price")
-            return False
+        if validate_price_relationship(entry_price, stop_loss):
+            validation_flags.append("VALID_STOP")
+            return True
 
-        validation_flags.append("VALID_STOP")
-        return True
+        validation_flags.append("INVALID_STOP")
+        warnings.append("Stop loss above entry price")
+        return False
 
     def _validate_position(
         self,
@@ -197,18 +190,16 @@ class RiskEngine:
         warnings: list[str],
     ) -> bool:
         """Validate position size. Returns True if valid."""
+        if validate_position_size(position_size, composite_max):
+            validation_flags.append("VALID_POSITION")
+            return True
+
+        validation_flags.append("INVALID_POSITION")
         if position_size <= 0:
-            validation_flags.append("INVALID_POSITION")
             warnings.append("Position size is zero")
-            return False
-
-        if position_size > composite_max:
-            validation_flags.append("INVALID_POSITION")
+        else:
             warnings.append("Position size exceeds composite maximum")
-            return False
-
-        validation_flags.append("VALID_POSITION")
-        return True
+        return False
 
     def _validate_risk_reward(
         self,
@@ -222,9 +213,9 @@ class RiskEngine:
             warnings.append("Missing risk/reward ratio")
             return False
 
-        if risk_reward_ratio < _MIN_RR_ACCEPTABLE:
+        if risk_reward_ratio < MIN_RR_ACCEPTABLE:
             validation_flags.append("INVALID_RISK")
-            warnings.append(f"Risk/reward ratio {risk_reward_ratio} below {_MIN_RR_ACCEPTABLE}")
+            warnings.append(f"Risk/reward ratio {risk_reward_ratio} below {MIN_RR_ACCEPTABLE}")
             return False
 
         validation_flags.append("VALID_RISK")
@@ -388,7 +379,7 @@ class RiskEngine:
         if not rr_valid:
             return False
 
-        if risk_reward_ratio is not None and risk_reward_ratio < _MIN_RR_ACCEPTABLE:
+        if risk_reward_ratio is not None and risk_reward_ratio < MIN_RR_ACCEPTABLE:
             return False
 
         return True
