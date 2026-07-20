@@ -88,11 +88,14 @@ class AnalyticsContext:
     """Immutable input to an analytics engine.
 
     Attributes:
-        symbol:           Instrument symbol.
-        exchange:         Exchange identifier.
-        prices:           Tuple of normalized market bars.
+        symbol:            Instrument symbol.
+        exchange:          Exchange identifier.
+        prices:            Tuple of normalized market bars for the instrument.
         corporate_actions: Corporate actions relevant to the window.
-        config:           Engine configuration.
+        config:            Engine configuration.
+        benchmark_prices:  Tuple of normalized bars for the benchmark index.
+        sector_prices:     Tuple of normalized bars for the instrument's sector.
+        industry_prices:   Tuple of normalized bars for the instrument's industry.
     """
 
     symbol: str
@@ -100,6 +103,9 @@ class AnalyticsContext:
     prices: tuple[MarketBar, ...]
     corporate_actions: tuple[CorporateAction, ...] = ()
     config: TrendConfig = field(default_factory=TrendConfig)
+    benchmark_prices: tuple[MarketBar, ...] = ()
+    sector_prices: tuple[MarketBar, ...] = ()
+    industry_prices: tuple[MarketBar, ...] = ()
 
 
 @dataclass(frozen=True)
