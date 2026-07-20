@@ -2,7 +2,8 @@
 Market Data Platform architecture tests.
 
 Covers enums, models, provider ABC, registry, validation,
-exceptions, DataEngine, determinism, and regression.
+exceptions, DataEngine, normalizer, schemas, adapters,
+determinism, and regression.
 """
 
 from __future__ import annotations
@@ -13,7 +14,15 @@ from typing import Any
 
 import pytest
 
+from backend.data.adapters import (
+    CorporateActionAdapter,
+    FinancialAdapter,
+    NewsAdapter,
+    PriceAdapter,
+    ShareholdingAdapter,
+)
 from backend.data.data_engine import DataEngine
+from backend.data.datasource import DataSource, NormalizedRecord
 from backend.data.exceptions import (
     DataPlatformError,
     InvalidRequestError,
@@ -21,9 +30,28 @@ from backend.data.exceptions import (
     UnsupportedProviderError,
     ValidationError,
 )
-from backend.data.models import DataRequest, DataResponse, DataStatus, DataType, ValidationResult
+from backend.data.models import (
+    DataRequest,
+    DataResponse,
+    DataStatus,
+    DataType,
+    NormalizedData,
+    ProviderIdentity,
+    ProviderType,
+    RawDataResponse,
+    ValidationResult,
+)
+from backend.data.normalizer import DataNormalizer
 from backend.data.provider import MarketDataProvider
 from backend.data.provider_registry import ProviderRegistry
+from backend.data.schemas import (
+    CorporateAction,
+    DailyOHLCV,
+    FinancialStatement,
+    IntradayOHLCV,
+    NewsRecord,
+    ShareholdingRecord,
+)
 from backend.data.validation import validate_request, validate_response_data, validate_status
 
 # ---------------------------------------------------------------------------
@@ -41,22 +69,27 @@ class FakeProvider(MarketDataProvider):
         supported: tuple[DataType, ...] = (DataType.PRICE_DAILY,),
         should_validate: bool = True,
         response_status: DataStatus = DataStatus.SUCCESS,
+        provider_type_value: ProviderType = ProviderType.TEST,
     ) -> None:
         self._name = name
         self._version = version
         self._supported = supported
         self._should_validate = should_validate
         self._response_status = response_status
+        self._provider_type = provider_type_value
 
     def supports(self, data_type: DataType) -> bool:
         return data_type in self._supported
 
-    def fetch(self, request: DataRequest) -> DataResponse:
-        return DataResponse(
-            request=request,
-            provider=self._name,
-            timestamp=datetime.now(UTC),
-            status=self._response_status,
+    def fetch_raw(self, request: DataRequest) -> RawDataResponse:
+        identity = ProviderIdentity(
+            provider_type=self._provider_type,
+            symbol=request.symbol,
+            exchange=request.exchange,
+            data_type=request.data_type,
+        )
+        return RawDataResponse(
+            provider_type=identity,
             payload=({"close": 100.0, "volume": 1000},),
             metadata={"source": "fake"},
         )
@@ -67,8 +100,46 @@ class FakeProvider(MarketDataProvider):
     def provider_name(self) -> str:
         return self._name
 
+    def provider_type(self) -> ProviderType:
+        return self._provider_type
+
     def version(self) -> str:
         return self._version
+
+
+class FakeDataSource(DataSource):
+    """Minimal concrete DataSource for testing."""
+
+    def __init__(self, source_name: str = "fake_source") -> None:
+        self._source_name = source_name
+
+    def source_name(self) -> str:
+        return self._source_name
+
+    def supported_types(self) -> tuple[DataType, ...]:
+        return (DataType.PRICE_DAILY,)
+
+    def normalize(self, response: RawDataResponse) -> tuple[NormalizedRecord, ...]:
+        return tuple(
+            DailyOHLCV(
+                date=date(2024, 1, 1),
+                open=99.0,
+                high=101.0,
+                low=98.0,
+                close=r.get("close", 0.0),  # type: ignore[arg-type]
+                adj_close=r.get("close", 0.0),  # type: ignore[arg-type]
+                volume=r.get("volume", 0.0),  # type: ignore[arg-type]
+            )
+            for r in response.payload
+        )
+
+    def validate_schema(
+        self,
+        response: RawDataResponse,
+    ) -> tuple[bool, tuple[str, ...]]:
+        if not response.payload:
+            return False, ("Empty payload",)
+        return True, ()
 
 
 def _make_request(**overrides: Any) -> DataRequest:
@@ -81,6 +152,51 @@ def _make_request(**overrides: Any) -> DataRequest:
     }
     defaults.update(overrides)
     return DataRequest(**defaults)
+
+
+def _make_raw_response(**overrides: Any) -> RawDataResponse:
+    identity = ProviderIdentity(
+        provider_type=overrides.pop("provider_type", ProviderType.TEST),
+        symbol=overrides.pop("symbol", "RELIANCE"),
+        exchange=overrides.pop("exchange", "NSE"),
+        data_type=overrides.pop("data_type", DataType.PRICE_DAILY),
+    )
+    return RawDataResponse(
+        provider_type=identity,
+        payload=overrides.pop("payload", ({"close": 100.0, "volume": 1000},)),
+        metadata=overrides.pop("metadata", {}),
+    )
+
+
+# ---------------------------------------------------------------------------
+# ProviderType enum
+# ---------------------------------------------------------------------------
+
+
+class TestProviderType:
+    def test_all_values_unique(self):
+        values = [pt.value for pt in ProviderType]
+        assert len(values) == len(set(values))
+
+    def test_expected_types(self):
+        assert ProviderType.NSE == "nse"
+        assert ProviderType.BSE == "bse"
+        assert ProviderType.NSE_INDEX == "nse_index"
+        assert ProviderType.YAHOO == "yahoo"
+        assert ProviderType.ALPHA_VANTAGE == "alpha_vantage"
+        assert ProviderType.POLYGON == "polygon"
+        assert ProviderType.TICKERTAPE == "tickertape"
+        assert ProviderType.SCREENER == "screener"
+        assert ProviderType.CSV == "csv"
+        assert ProviderType.DATABASE == "database"
+        assert ProviderType.TEST == "test"
+
+    def test_count(self):
+        assert len(ProviderType) == 11
+
+    def test_is_str_enum(self):
+        assert isinstance(ProviderType.NSE, str)
+        assert ProviderType.NSE == "nse"
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +252,50 @@ class TestDataStatus:
 
 
 # ---------------------------------------------------------------------------
+# ProviderIdentity model
+# ---------------------------------------------------------------------------
+
+
+class TestProviderIdentity:
+    def test_creation(self):
+        pi = ProviderIdentity(
+            provider_type=ProviderType.NSE,
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        assert pi.provider_type == ProviderType.NSE
+        assert pi.symbol == "RELIANCE"
+        assert pi.exchange == "NSE"
+        assert pi.data_type == DataType.PRICE_DAILY
+
+    def test_frozen(self):
+        pi = ProviderIdentity(
+            provider_type=ProviderType.NSE,
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        with pytest.raises(FrozenInstanceError):
+            pi.symbol = "TCS"  # type: ignore[misc]
+
+    def test_equality(self):
+        pi1 = ProviderIdentity(
+            provider_type=ProviderType.NSE,
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        pi2 = ProviderIdentity(
+            provider_type=ProviderType.NSE,
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        assert pi1 == pi2
+
+
+# ---------------------------------------------------------------------------
 # DataRequest model
 # ---------------------------------------------------------------------------
 
@@ -168,6 +328,80 @@ class TestDataRequest:
         r1 = _make_request()
         r2 = _make_request(symbol="TCS")
         assert r1 != r2
+
+
+# ---------------------------------------------------------------------------
+# RawDataResponse model
+# ---------------------------------------------------------------------------
+
+
+class TestRawDataResponse:
+    def test_creation(self):
+        rr = _make_raw_response()
+        assert rr.provider_type.provider_type == ProviderType.TEST
+        assert rr.provider_type.symbol == "RELIANCE"
+        assert len(rr.payload) == 1
+        assert rr.metadata == {}
+
+    def test_with_metadata(self):
+        rr = _make_raw_response(metadata={"key": "val"})
+        assert rr.metadata == {"key": "val"}
+
+    def test_frozen(self):
+        rr = _make_raw_response()
+        with pytest.raises(FrozenInstanceError):
+            rr.payload = ()  # type: ignore[misc]
+
+    def test_empty_payload(self):
+        rr = _make_raw_response(payload=())
+        assert rr.payload == ()
+
+
+# ---------------------------------------------------------------------------
+# NormalizedData model
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizedData:
+    def test_creation(self):
+        nd = NormalizedData(
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+            records=(DailyOHLCV(
+                date=date(2024, 1, 1),
+                open=99.0,
+                high=101.0,
+                low=98.0,
+                close=100.0,
+                adj_close=100.0,
+                volume=1000.0,
+            ),),
+            metadata={"source": "test"},
+        )
+        assert nd.symbol == "RELIANCE"
+        assert nd.exchange == "NSE"
+        assert nd.data_type == DataType.PRICE_DAILY
+        assert len(nd.records) == 1
+        assert nd.metadata == {"source": "test"}
+
+    def test_defaults(self):
+        nd = NormalizedData(
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        assert nd.records == ()
+        assert nd.metadata == {}
+
+    def test_frozen(self):
+        nd = NormalizedData(
+            symbol="RELIANCE",
+            exchange="NSE",
+            data_type=DataType.PRICE_DAILY,
+        )
+        with pytest.raises(FrozenInstanceError):
+            nd.symbol = "TCS"  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +482,94 @@ class TestDataResponse:
 
 
 # ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+
+class TestSchemas:
+    def test_daily_ohlcv(self):
+        bar = DailyOHLCV(
+            date=date(2024, 1, 15),
+            open=100.0,
+            high=105.0,
+            low=99.0,
+            close=103.0,
+            adj_close=103.0,
+            volume=50000.0,
+        )
+        assert bar.open == 100.0
+        assert bar.close == 103.0
+        assert bar.volume == 50000.0
+
+    def test_daily_ohlcv_frozen(self):
+        bar = DailyOHLCV(
+            date=date(2024, 1, 15),
+            open=100.0,
+            high=105.0,
+            low=99.0,
+            close=103.0,
+            adj_close=103.0,
+            volume=50000.0,
+        )
+        with pytest.raises(FrozenInstanceError):
+            bar.close = 200.0  # type: ignore[misc]
+
+    def test_intraday_ohlcv(self):
+        bar = IntradayOHLCV(
+            datetime=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
+            open=100.0,
+            high=102.0,
+            low=99.5,
+            close=101.0,
+            volume=5000.0,
+        )
+        assert bar.close == 101.0
+
+    def test_financial_statement(self):
+        fs = FinancialStatement(
+            symbol="RELIANCE",
+            report_date=date(2024, 3, 31),
+            period="Q4 FY24",
+            revenue=200000.0,
+            net_profit=15000.0,
+            eps=22.0,
+        )
+        assert fs.revenue == 200000.0
+        assert fs.period == "Q4 FY24"
+        assert fs.total_assets is None
+
+    def test_corporate_action(self):
+        ca = CorporateAction(
+            symbol="RELIANCE",
+            action_type="dividend",
+            ex_date=date(2024, 6, 15),
+            value=8.0,
+        )
+        assert ca.action_type == "dividend"
+        assert ca.value == 8.0
+
+    def test_news_record(self):
+        nr = NewsRecord(
+            symbol="RELIANCE",
+            headline="Reliance reports record profits",
+            source="Economic Times",
+        )
+        assert nr.headline == "Reliance reports record profits"
+        assert nr.sentiment is None
+
+    def test_shareholding_record(self):
+        sr = ShareholdingRecord(
+            symbol="RELIANCE",
+            report_date=date(2024, 3, 31),
+            category="promoter",
+            shares_held=500000000.0,
+            percentage=50.2,
+        )
+        assert sr.category == "promoter"
+        assert sr.percentage == 50.2
+
+
+# ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
@@ -297,6 +619,7 @@ class TestProviderABC:
         assert isinstance(p, MarketDataProvider)
         assert p.provider_name() == "fake"
         assert p.version() == "1.0.0"
+        assert p.provider_type() == ProviderType.TEST
         assert p.supports(DataType.PRICE_DAILY) is True
         assert p.supports(DataType.FINANCIALS) is False
 
@@ -305,12 +628,13 @@ class TestProviderABC:
         r = _make_request()
         assert p.validate(r) is False
 
-    def test_fetch_returns_response(self):
+    def test_fetch_raw_returns_raw_response(self):
         p = FakeProvider()
         r = _make_request()
-        resp = p.fetch(r)
-        assert isinstance(resp, DataResponse)
-        assert resp.status == DataStatus.SUCCESS
+        raw = p.fetch_raw(r)
+        assert isinstance(raw, RawDataResponse)
+        assert raw.provider_type.provider_type == ProviderType.TEST
+        assert len(raw.payload) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +657,13 @@ class TestProviderRegistry:
         resolved = reg.resolve_by_name("yfinance")
         assert resolved is p
 
+    def test_resolve_by_provider_type(self):
+        reg = ProviderRegistry()
+        p = FakeProvider(name="yfinance", provider_type_value=ProviderType.YAHOO)
+        reg.register(p, (DataType.PRICE_DAILY,))
+        resolved = reg.resolve_by_provider_type(ProviderType.YAHOO)
+        assert resolved is p
+
     def test_resolve_unregistered_type(self):
         reg = ProviderRegistry()
         with pytest.raises(UnsupportedDataTypeError):
@@ -342,6 +673,11 @@ class TestProviderRegistry:
         reg = ProviderRegistry()
         with pytest.raises(UnsupportedProviderError):
             reg.resolve_by_name("nonexistent")
+
+    def test_resolve_unregistered_provider_type(self):
+        reg = ProviderRegistry()
+        with pytest.raises(UnsupportedProviderError):
+            reg.resolve_by_provider_type(ProviderType.NSE)
 
     def test_supported_types(self):
         reg = ProviderRegistry()
@@ -388,6 +724,110 @@ class TestProviderRegistry:
         reg.register(p2, (DataType.FINANCIALS,))
         assert reg.resolve(DataType.PRICE_DAILY) is p1
         assert reg.resolve(DataType.FINANCIALS) is p2
+
+
+# ---------------------------------------------------------------------------
+# DataSource ABC
+# ---------------------------------------------------------------------------
+
+
+class TestDataSourceABC:
+    def test_cannot_instantiate_abc(self):
+        with pytest.raises(TypeError):
+            DataSource()  # type: ignore[abstract]
+
+    def test_fake_source_implements_interface(self):
+        ds = FakeDataSource()
+        assert isinstance(ds, DataSource)
+        assert ds.source_name() == "fake_source"
+        assert DataType.PRICE_DAILY in ds.supported_types()
+
+    def test_normalize_returns_records(self):
+        ds = FakeDataSource()
+        rr = _make_raw_response()
+        records = ds.normalize(rr)
+        assert len(records) == 1
+        assert isinstance(records[0], DailyOHLCV)
+
+    def test_validate_schema_valid(self):
+        ds = FakeDataSource()
+        rr = _make_raw_response()
+        valid, errors = ds.validate_schema(rr)
+        assert valid is True
+        assert errors == ()
+
+    def test_validate_schema_empty_payload(self):
+        ds = FakeDataSource()
+        rr = _make_raw_response(payload=())
+        valid, errors = ds.validate_schema(rr)
+        assert valid is False
+        assert len(errors) > 0
+
+
+# ---------------------------------------------------------------------------
+# DataNormalizer
+# ---------------------------------------------------------------------------
+
+
+class TestDataNormalizer:
+    def test_register_and_normalize(self):
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        rr = _make_raw_response()
+        nd = norm.normalize(rr)
+        assert nd.symbol == "RELIANCE"
+        assert nd.exchange == "NSE"
+        assert nd.data_type == DataType.PRICE_DAILY
+        assert len(nd.records) == 1
+
+    def test_unregistered_type_raises(self):
+        norm = DataNormalizer()
+        rr = _make_raw_response()
+        with pytest.raises(UnsupportedDataTypeError):
+            norm.normalize(rr)
+
+    def test_has_source(self):
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        assert norm.has_source(DataType.PRICE_DAILY) is True
+        assert norm.has_source(DataType.FINANCIALS) is False
+
+    def test_registered_types(self):
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY, DataType.FINANCIALS))
+        types = norm.registered_types()
+        assert DataType.PRICE_DAILY in types
+        assert DataType.FINANCIALS in types
+
+
+# ---------------------------------------------------------------------------
+# Adapters ABC
+# ---------------------------------------------------------------------------
+
+
+class TestAdaptersABC:
+    def test_price_adapter_cannot_instantiate(self):
+        with pytest.raises(TypeError):
+            PriceAdapter()  # type: ignore[abstract]
+
+    def test_financial_adapter_cannot_instantiate(self):
+        with pytest.raises(TypeError):
+            FinancialAdapter()  # type: ignore[abstract]
+
+    def test_news_adapter_cannot_instantiate(self):
+        with pytest.raises(TypeError):
+            NewsAdapter()  # type: ignore[abstract]
+
+    def test_shareholding_adapter_cannot_instantiate(self):
+        with pytest.raises(TypeError):
+            ShareholdingAdapter()  # type: ignore[abstract]
+
+    def test_corporate_action_adapter_cannot_instantiate(self):
+        with pytest.raises(TypeError):
+            CorporateActionAdapter()  # type: ignore[abstract]
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +920,10 @@ class TestDataEngine:
         reg = ProviderRegistry()
         p = FakeProvider(name="yfinance")
         reg.register(p, (DataType.PRICE_DAILY,))
-        engine = DataEngine(reg)
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
         req = _make_request()
         resp = engine.get_data(req)
         assert resp.status == DataStatus.SUCCESS
@@ -503,7 +946,10 @@ class TestDataEngine:
         p2 = FakeProvider(name="alpha")
         reg.register(p1, (DataType.PRICE_DAILY,))
         reg.register(p2, (DataType.PRICE_DAILY,))
-        engine = DataEngine(reg)
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
         req = _make_request(provider_preference="alpha")
         resp = engine.get_data(req)
         assert resp.provider == "alpha"
@@ -512,7 +958,10 @@ class TestDataEngine:
         reg = ProviderRegistry()
         p = FakeProvider(name="yfinance")
         reg.register(p, (DataType.PRICE_DAILY,))
-        engine = DataEngine(reg)
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
         req = _make_request(provider_preference="nonexistent")
         resp = engine.get_data(req)
         assert resp.provider == "yfinance"
@@ -537,11 +986,21 @@ class TestDataEngine:
         reg = ProviderRegistry()
         p = FakeProvider(name="test_provider")
         reg.register(p, (DataType.PRICE_DAILY,))
-        engine = DataEngine(reg)
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
         req = _make_request()
         resp = engine.get_data(req)
         assert resp.request is req
         assert resp.provider == "test_provider"
+
+    def test_engine_default_normalizer(self):
+        reg = ProviderRegistry()
+        p = FakeProvider(name="yfinance")
+        reg.register(p, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg)
+        assert engine._normalizer is not None
 
 
 # ---------------------------------------------------------------------------
@@ -581,6 +1040,16 @@ class TestDeterminism:
         r2 = reg.resolve(DataType.PRICE_DAILY)
         assert r1 is r2
 
+    def test_raw_response_equality(self):
+        rr1 = _make_raw_response()
+        rr2 = _make_raw_response()
+        assert rr1 == rr2
+
+    def test_normalized_data_equality(self):
+        nd1 = NormalizedData(symbol="X", exchange="NSE", data_type=DataType.PRICE_DAILY)
+        nd2 = NormalizedData(symbol="X", exchange="NSE", data_type=DataType.PRICE_DAILY)
+        assert nd1 == nd2
+
 
 # ---------------------------------------------------------------------------
 # Regression
@@ -592,7 +1061,10 @@ class TestRegression:
         reg = ProviderRegistry()
         p = FakeProvider(name="yfinance")
         reg.register(p, (DataType.PRICE_DAILY, DataType.FINANCIALS))
-        engine = DataEngine(reg)
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
 
         req = _make_request(data_type=DataType.PRICE_DAILY)
         resp = engine.get_data(req)
@@ -604,6 +1076,11 @@ class TestRegression:
         for dt in DataType:
             assert dt.value
             assert isinstance(dt.value, str)
+
+    def test_all_provider_types_represented(self):
+        for pt in ProviderType:
+            assert pt.value
+            assert isinstance(pt.value, str)
 
     def test_provider_version_accessible(self):
         p = FakeProvider(version="2.1.0")
@@ -627,3 +1104,31 @@ class TestRegression:
         assert isinstance(vr.errors, tuple)
         assert isinstance(vr.warnings, tuple)
         assert isinstance(vr.missing_fields, tuple)
+
+    def test_provider_type_drives_normalization(self):
+        reg = ProviderRegistry()
+        p = FakeProvider(
+            name="nse_provider",
+            provider_type_value=ProviderType.NSE,
+        )
+        reg.register(p, (DataType.PRICE_DAILY,))
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
+        req = _make_request()
+        resp = engine.get_data(req)
+        assert resp.status == DataStatus.SUCCESS
+
+    def test_raw_to_normalized_to_response_roundtrip(self):
+        reg = ProviderRegistry()
+        p = FakeProvider(name="test_roundtrip")
+        reg.register(p, (DataType.PRICE_DAILY,))
+        norm = DataNormalizer()
+        ds = FakeDataSource()
+        norm.register(ds, (DataType.PRICE_DAILY,))
+        engine = DataEngine(reg, norm)
+        req = _make_request()
+        resp = engine.get_data(req)
+        assert "close" in resp.payload[0]
+        assert resp.payload[0]["close"] == 100.0

@@ -42,6 +42,39 @@ class DataStatus(StrEnum):
     CACHED = "cached"
 
 
+class ProviderType(StrEnum):
+    """Identifies the originating data provider system."""
+
+    NSE = "nse"
+    BSE = "bse"
+    NSE_INDEX = "nse_index"
+    YAHOO = "yahoo"
+    ALPHA_VANTAGE = "alpha_vantage"
+    POLYGON = "polygon"
+    TICKERTAPE = "tickertape"
+    SCREENER = "screener"
+    CSV = "csv"
+    DATABASE = "database"
+    TEST = "test"
+
+
+@dataclass(frozen=True)
+class ProviderIdentity:
+    """Immutable identity for a provider request context.
+
+    Attributes:
+        provider_type: Type of provider.
+        symbol:        Ticker symbol.
+        exchange:      Exchange identifier.
+        data_type:     Type of data requested.
+    """
+
+    provider_type: ProviderType
+    symbol: str
+    exchange: str
+    data_type: DataType
+
+
 @dataclass(frozen=True)
 class DataRequest:
     """Immutable request for market data.
@@ -61,6 +94,42 @@ class DataRequest:
     start_date: date
     end_date: date
     provider_preference: str | None = None
+
+
+@dataclass(frozen=True)
+class RawDataResponse:
+    """Immutable raw response directly from a provider.
+
+    Attributes:
+        provider_type: Provider identity context.
+        payload:       Raw data records (provider-specific format).
+        metadata:      Provider-specific metadata.
+        timestamp:     When the response was generated.
+    """
+
+    provider_type: ProviderIdentity
+    payload: tuple[dict[str, object], ...]
+    metadata: dict[str, str] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now().astimezone())
+
+
+@dataclass(frozen=True)
+class NormalizedData:
+    """Immutable normalized data after provider mapping.
+
+    Attributes:
+        symbol:     Ticker symbol.
+        exchange:   Exchange identifier.
+        data_type:  Type of data.
+        records:    Canonical schema records.
+        metadata:   Normalization metadata.
+    """
+
+    symbol: str
+    exchange: str
+    data_type: DataType
+    records: tuple[object, ...] = field(default_factory=tuple)
+    metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

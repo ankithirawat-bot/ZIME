@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from backend.data.exceptions import UnsupportedDataTypeError, UnsupportedProviderError
-from backend.data.models import DataType
+from backend.data.models import DataType, ProviderType
 
 if TYPE_CHECKING:
     from backend.data.provider import MarketDataProvider
@@ -25,8 +25,13 @@ class ProviderRegistry:
     def __init__(self) -> None:
         self._providers: dict[str, MarketDataProvider] = {}
         self._type_map: dict[DataType, str] = {}
+        self._provider_type_map: dict[ProviderType, str] = {}
 
-    def register(self, provider: MarketDataProvider, data_types: tuple[DataType, ...]) -> None:
+    def register(
+        self,
+        provider: MarketDataProvider,
+        data_types: tuple[DataType, ...],
+    ) -> None:
         """Register a provider for one or more data types.
 
         Args:
@@ -37,6 +42,7 @@ class ProviderRegistry:
         self._providers[name] = provider
         for dt in data_types:
             self._type_map[dt] = name
+        self._provider_type_map[provider.provider_type()] = name
 
     def resolve(self, data_type: DataType) -> MarketDataProvider:
         """Resolve the provider for a data type.
@@ -53,6 +59,23 @@ class ProviderRegistry:
         name = self._type_map.get(data_type)
         if name is None:
             raise UnsupportedDataTypeError(data_type.value, "none")
+        return self._providers[name]
+
+    def resolve_by_provider_type(self, provider_type: ProviderType) -> MarketDataProvider:
+        """Resolve a provider by its ProviderType.
+
+        Args:
+            provider_type: Provider type to resolve.
+
+        Returns:
+            Provider instance.
+
+        Raises:
+            UnsupportedProviderError: If provider type is not registered.
+        """
+        name = self._provider_type_map.get(provider_type)
+        if name is None:
+            raise UnsupportedProviderError(provider_type.value)
         return self._providers[name]
 
     def resolve_by_name(self, provider_name: str) -> MarketDataProvider:

@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from backend.data.models import DataRequest, DataResponse, DataType
+from backend.data.models import DataRequest, DataType, ProviderType, RawDataResponse
 
 
 class MarketDataProvider(ABC):
     """Abstract interface for market data providers.
 
-    Subclasses implement ``fetch`` for each supported ``DataType``.
-    The registry uses ``supports`` and ``provider_name`` for routing.
+    Subclasses implement ``fetch_raw`` to retrieve provider-specific
+    raw data.  Normalization is handled by the DataEngine layer.
     """
 
     @abstractmethod
@@ -32,14 +32,14 @@ class MarketDataProvider(ABC):
         """
 
     @abstractmethod
-    def fetch(self, request: DataRequest) -> DataResponse:
-        """Fetch data for the given request.
+    def fetch_raw(self, request: DataRequest) -> RawDataResponse:
+        """Fetch raw data for the given request.
 
         Args:
             request: Validated data request.
 
         Returns:
-            DataResponse with payload or error status.
+            RawDataResponse with provider-specific payload.
         """
 
     @abstractmethod
@@ -56,6 +56,10 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def provider_name(self) -> str:
         """Unique identifier for this provider."""
+
+    @abstractmethod
+    def provider_type(self) -> ProviderType:
+        """Return the ProviderType for this provider."""
 
     @abstractmethod
     def version(self) -> str:
