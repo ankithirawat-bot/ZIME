@@ -23,6 +23,11 @@ class StrategyType(Enum):
     """Supported investment strategies."""
 
     MOMENTUM = "Momentum"
+    BREAKOUT = "Breakout"
+    TREND_FOLLOWING = "Trend Following"
+    GROWTH = "Growth"
+    QUALITY = "Quality"
+    CUSTOM = "Custom"
 
 
 @dataclass(frozen=True)
@@ -35,6 +40,13 @@ class StrategyConfiguration:
         minimum_confidence:       Minimum confidence to approve.
         allow_bear_market:        Allow execution in bear markets.
         allow_extended_trend:     Allow execution in extended trends.
+        minimum_pattern_score:    Minimum pattern score (0 = no gate).
+        minimum_volume_score:     Minimum volume score (0 = no gate).
+        minimum_trend_score:      Minimum trend score (0 = no gate).
+        minimum_rs_score:         Minimum relative strength score (0 = no gate).
+        require_strong_trend:     Require trend quality >= Strong.
+        require_strong_pattern:   Require pattern score > 0.
+        ignore_pattern:           Skip pattern gate entirely.
     """
 
     strategy_type: StrategyType
@@ -42,6 +54,13 @@ class StrategyConfiguration:
     minimum_confidence: float = 60.0
     allow_bear_market: bool = False
     allow_extended_trend: bool = True
+    minimum_pattern_score: float = 0.0
+    minimum_volume_score: float = 0.0
+    minimum_trend_score: float = 0.0
+    minimum_rs_score: float = 0.0
+    require_strong_trend: bool = False
+    require_strong_pattern: bool = False
+    ignore_pattern: bool = False
 
 
 @dataclass(frozen=True)

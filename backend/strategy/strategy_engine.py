@@ -15,7 +15,14 @@ from backend.strategy.models import (
     StrategyType,
 )
 from backend.strategy.pipeline import EvaluationPipeline
-from backend.strategy.strategies import MomentumStrategy
+from backend.strategy.strategies import (
+    BreakoutStrategy,
+    CustomStrategy,
+    GrowthStrategy,
+    MomentumStrategy,
+    QualityStrategy,
+    TrendFollowingStrategy,
+)
 from backend.strategy.strategy_registry import StrategyRegistry
 
 
@@ -33,6 +40,11 @@ class StrategyEngine:
     def _register_defaults(self) -> None:
         """Register built-in strategies."""
         self._registry.register(StrategyType.MOMENTUM, MomentumStrategy())
+        self._registry.register(StrategyType.BREAKOUT, BreakoutStrategy())
+        self._registry.register(StrategyType.TREND_FOLLOWING, TrendFollowingStrategy())
+        self._registry.register(StrategyType.GROWTH, GrowthStrategy())
+        self._registry.register(StrategyType.QUALITY, QualityStrategy())
+        self._registry.register(StrategyType.CUSTOM, CustomStrategy())
 
     def evaluate(self, strategy_input: StrategyInput) -> StrategyResult:
         """Evaluate a strategy for a symbol.

@@ -36,7 +36,15 @@ from backend.strategy.models import (
     StrategyType,
 )
 from backend.strategy.pipeline import EvaluationPipeline
-from backend.strategy.strategies import MomentumStrategy, Strategy
+from backend.strategy.strategies import (
+    BreakoutStrategy,
+    CustomStrategy,
+    GrowthStrategy,
+    MomentumStrategy,
+    QualityStrategy,
+    Strategy,
+    TrendFollowingStrategy,
+)
 from backend.strategy.strategy_engine import StrategyEngine
 from backend.strategy.strategy_registry import StrategyRegistry
 from backend.trade.models import EntryType, ExecutionStatus, TradePlan, TradeQuality
@@ -214,6 +222,7 @@ def _strategy_input(
     trend: TrendSnapshot | None = None,
     pattern: PatternSnapshot | None = None,
     volume: VolumeSnapshot | None = None,
+    strategy_type: StrategyType = StrategyType.MOMENTUM,
     min_composite: float = 60.0,
     min_confidence: float = 60.0,
     allow_bear: bool = False,
@@ -227,7 +236,7 @@ def _strategy_input(
         pattern_snapshot=pattern or _pattern_snapshot(),
         volume_snapshot=volume or _volume_snapshot(),
         configuration=StrategyConfiguration(
-            strategy_type=StrategyType.MOMENTUM,
+            strategy_type=strategy_type,
             minimum_composite_score=min_composite,
             minimum_confidence=min_confidence,
             allow_bear_market=allow_bear,
@@ -388,8 +397,13 @@ class TestStrategyABC:
 class TestModels:
 
     def test_strategy_type_enum(self):
-        """StrategyType should have MOMENTUM."""
+        """StrategyType should have all required types."""
         assert StrategyType.MOMENTUM.value == "Momentum"
+        assert StrategyType.BREAKOUT.value == "Breakout"
+        assert StrategyType.TREND_FOLLOWING.value == "Trend Following"
+        assert StrategyType.GROWTH.value == "Growth"
+        assert StrategyType.QUALITY.value == "Quality"
+        assert StrategyType.CUSTOM.value == "Custom"
 
     def test_configuration_defaults(self):
         """StrategyConfiguration should have sensible defaults."""
@@ -398,6 +412,13 @@ class TestModels:
         assert config.minimum_confidence == 60.0
         assert config.allow_bear_market is False
         assert config.allow_extended_trend is True
+        assert config.minimum_pattern_score == 0.0
+        assert config.minimum_volume_score == 0.0
+        assert config.minimum_trend_score == 0.0
+        assert config.minimum_rs_score == 0.0
+        assert config.require_strong_trend is False
+        assert config.require_strong_pattern is False
+        assert config.ignore_pattern is False
 
     def test_configuration_custom(self):
         """StrategyConfiguration should accept custom values."""
@@ -535,6 +556,12 @@ class TestRegistry:
         registry.register(StrategyType.MOMENTUM, s1)
         registry.register(StrategyType.MOMENTUM, s2)
         assert registry.resolve(StrategyType.MOMENTUM) is s2
+
+    def test_all_strategy_types_registered(self):
+        """Engine should register all built-in strategies."""
+        engine = StrategyEngine()
+        for st in StrategyType:
+            assert engine._registry.has(st), f"{st} not registered"
 
 
 # ---------------------------------------------------------------------------
@@ -786,6 +813,574 @@ class TestMomentumStrategy:
 
 
 # ---------------------------------------------------------------------------
+# Tests: BreakoutStrategy
+# ---------------------------------------------------------------------------
+
+
+class TestBreakoutStrategy:
+
+    def test_approves_strong_setup(self):
+        """BreakoutStrategy should approve when all criteria met."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.BREAKOUT,
+            minimum_pattern_score=50.0,
+            minimum_volume_score=50.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+        assert result.summary.strategy_type == StrategyType.BREAKOUT
+
+    def test_rejects_low_pattern_score(self):
+        """BreakoutStrategy should reject low pattern score."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.BREAKOUT,
+            minimum_pattern_score=80.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "pattern" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_volume_score(self):
+        """BreakoutStrategy should reject low volume score."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.BREAKOUT,
+            minimum_volume_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "volume" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_composite(self):
+        """BreakoutStrategy should reject low composite score."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context(composite_score=40.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.BREAKOUT,
+            minimum_composite_score=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_rejects_bear_market(self):
+        """BreakoutStrategy should reject bear market by default."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BEAR)
+        config = StrategyConfiguration(strategy_type=StrategyType.BREAKOUT)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "bear" in result.summary.approval_reason.lower()
+
+    def test_is_deterministic(self):
+        """BreakoutStrategy should be deterministic."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.BREAKOUT)
+        r1 = strategy.evaluate(ctx, config)
+        r2 = strategy.evaluate(ctx, config)
+        assert r1.summary.overall_score == r2.summary.overall_score
+        assert r1.summary.approved == r2.summary.approved
+
+    def test_context_preserved(self):
+        """BreakoutStrategy should preserve context."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.BREAKOUT)
+        result = strategy.evaluate(ctx, config)
+        assert result.context is ctx
+
+    def test_zero_threshold_skips_gate(self):
+        """BreakoutStrategy should skip gate when threshold is 0."""
+        strategy = BreakoutStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.BREAKOUT,
+            minimum_pattern_score=0.0,
+            minimum_volume_score=0.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+
+
+# ---------------------------------------------------------------------------
+# Tests: TrendFollowingStrategy
+# ---------------------------------------------------------------------------
+
+
+class TestTrendFollowingStrategy:
+
+    def test_approves_strong_setup(self):
+        """TrendFollowingStrategy should approve when all criteria met."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            minimum_trend_score=60.0,
+            minimum_rs_score=50.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+        assert result.summary.strategy_type == StrategyType.TREND_FOLLOWING
+
+    def test_rejects_low_trend_score(self):
+        """TrendFollowingStrategy should reject low trend score."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            minimum_trend_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "trend" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_rs_score(self):
+        """TrendFollowingStrategy should reject low RS score."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            minimum_rs_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "rs" in result.summary.approval_reason.lower()
+
+    def test_rejects_bear_market(self):
+        """TrendFollowingStrategy should reject bear market."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BEAR)
+        config = StrategyConfiguration(strategy_type=StrategyType.TREND_FOLLOWING)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_rejects_low_composite(self):
+        """TrendFollowingStrategy should reject low composite."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context(composite_score=30.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            minimum_composite_score=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_is_deterministic(self):
+        """TrendFollowingStrategy should be deterministic."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.TREND_FOLLOWING)
+        r1 = strategy.evaluate(ctx, config)
+        r2 = strategy.evaluate(ctx, config)
+        assert r1.summary.overall_score == r2.summary.overall_score
+
+    def test_context_preserved(self):
+        """TrendFollowingStrategy should preserve context."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.TREND_FOLLOWING)
+        result = strategy.evaluate(ctx, config)
+        assert result.context is ctx
+
+    def test_zero_threshold_skips_gate(self):
+        """TrendFollowingStrategy should skip gate when threshold is 0."""
+        strategy = TrendFollowingStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.TREND_FOLLOWING,
+            minimum_trend_score=0.0,
+            minimum_rs_score=0.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+
+
+# ---------------------------------------------------------------------------
+# Tests: GrowthStrategy
+# ---------------------------------------------------------------------------
+
+
+class TestGrowthStrategy:
+
+    def test_approves_strong_setup(self):
+        """GrowthStrategy should approve when all criteria met."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.GROWTH)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+        assert result.summary.strategy_type == StrategyType.GROWTH
+
+    def test_rejects_low_composite(self):
+        """GrowthStrategy should reject low composite."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context(composite_score=40.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.GROWTH,
+            minimum_composite_score=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_rejects_low_confidence(self):
+        """GrowthStrategy should reject low confidence."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context(composite_confidence=30.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.GROWTH,
+            minimum_confidence=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_rejects_no_pattern_when_required(self):
+        """GrowthStrategy should reject when pattern required but missing."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context()
+        # Override pattern to have score 0
+        ctx = EvaluationContext(
+            market_result=ctx.market_result,
+            relative_strength_result=ctx.relative_strength_result,
+            trend_result=ctx.trend_result,
+            pattern_result=PatternResult(
+                pattern_name=PatternType.UNKNOWN,
+                score=0.0,
+                confidence=0.0,
+            ),
+            volume_result=ctx.volume_result,
+            composite_result=ctx.composite_result,
+            trade_result=ctx.trade_result,
+            risk_result=ctx.risk_result,
+        )
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.GROWTH,
+            require_strong_pattern=True,
+            ignore_pattern=False,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "pattern" in result.summary.approval_reason.lower()
+
+    def test_allows_no_pattern_when_ignored(self):
+        """GrowthStrategy should allow when pattern ignored."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context()
+        ctx = EvaluationContext(
+            market_result=ctx.market_result,
+            relative_strength_result=ctx.relative_strength_result,
+            trend_result=ctx.trend_result,
+            pattern_result=PatternResult(
+                pattern_name=PatternType.UNKNOWN,
+                score=0.0,
+                confidence=0.0,
+            ),
+            volume_result=ctx.volume_result,
+            composite_result=ctx.composite_result,
+            trade_result=ctx.trade_result,
+            risk_result=ctx.risk_result,
+        )
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.GROWTH,
+            require_strong_pattern=True,
+            ignore_pattern=True,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+
+    def test_rejects_bear_market(self):
+        """GrowthStrategy should reject bear market."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BEAR)
+        config = StrategyConfiguration(strategy_type=StrategyType.GROWTH)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_is_deterministic(self):
+        """GrowthStrategy should be deterministic."""
+        strategy = GrowthStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.GROWTH)
+        r1 = strategy.evaluate(ctx, config)
+        r2 = strategy.evaluate(ctx, config)
+        assert r1.summary.overall_score == r2.summary.overall_score
+
+
+# ---------------------------------------------------------------------------
+# Tests: QualityStrategy
+# ---------------------------------------------------------------------------
+
+
+class TestQualityStrategy:
+
+    def test_approves_strong_setup(self):
+        """QualityStrategy should approve when all criteria met."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+        assert result.summary.strategy_type == StrategyType.QUALITY
+
+    def test_rejects_bear_market(self):
+        """QualityStrategy should reject bear market."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BEAR)
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "weak regime" in result.summary.approval_reason.lower()
+
+    def test_rejects_weak_market(self):
+        """QualityStrategy should reject weak market."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.WEAK)
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "weak regime" in result.summary.approval_reason.lower()
+
+    def test_rejects_high_risk_grade(self):
+        """QualityStrategy should reject high risk grade."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context()
+        # Override risk result with high grade
+        ctx = EvaluationContext(
+            market_result=ctx.market_result,
+            relative_strength_result=ctx.relative_strength_result,
+            trend_result=ctx.trend_result,
+            pattern_result=ctx.pattern_result,
+            volume_result=ctx.volume_result,
+            composite_result=ctx.composite_result,
+            trade_result=ctx.trade_result,
+            risk_result=RiskManagementResult(
+                max_risk_percent=1.0,
+                recommended_position_size=15_000.0,
+                capital_at_risk=150.0,
+                risk_per_share=1.0,
+                maximum_loss=150.0,
+                shares_to_buy=60,
+                portfolio_exposure=15.0,
+                exposure_status="Normal",
+                trade_risk_grade="High",
+                portfolio_risk_grade="Low",
+                execution_allowed=True,
+                rejection_reason=RejectionReason.NONE,
+                decision_trace=None,  # type: ignore[arg-type]
+                validation_flags=["VALID_RISK"],
+                confidence=80.0,
+                reasons=["Risk acceptable"],
+                warnings=[],
+            ),
+        )
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "risk grade" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_composite(self):
+        """QualityStrategy should reject low composite."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context(composite_score=40.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.QUALITY,
+            minimum_composite_score=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_is_deterministic(self):
+        """QualityStrategy should be deterministic."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        r1 = strategy.evaluate(ctx, config)
+        r2 = strategy.evaluate(ctx, config)
+        assert r1.summary.overall_score == r2.summary.overall_score
+
+    def test_context_preserved(self):
+        """QualityStrategy should preserve context."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        assert result.context is ctx
+
+    def test_allows_bull_market(self):
+        """QualityStrategy should allow bull market."""
+        strategy = QualityStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BULL)
+        config = StrategyConfiguration(strategy_type=StrategyType.QUALITY)
+        result = strategy.evaluate(ctx, config)
+        # Should not be rejected for regime
+        assert "weak regime" not in result.summary.approval_reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests: CustomStrategy
+# ---------------------------------------------------------------------------
+
+
+class TestCustomStrategy:
+
+    def test_approves_strong_setup(self):
+        """CustomStrategy should approve when all criteria met."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.CUSTOM)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+        assert result.summary.strategy_type == StrategyType.CUSTOM
+
+    def test_rejects_low_composite(self):
+        """CustomStrategy should reject low composite."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context(composite_score=40.0)
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_composite_score=60.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_rejects_low_pattern(self):
+        """CustomStrategy should reject low pattern score."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_pattern_score=80.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "pattern" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_volume(self):
+        """CustomStrategy should reject low volume score."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_volume_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "volume" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_trend(self):
+        """CustomStrategy should reject low trend score."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_trend_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "trend" in result.summary.approval_reason.lower()
+
+    def test_rejects_low_rs(self):
+        """CustomStrategy should reject low RS score."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_rs_score=90.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "rs" in result.summary.approval_reason.lower()
+
+    def test_rejects_weak_trend_when_required(self):
+        """CustomStrategy should reject weak trend when required."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        ctx = EvaluationContext(
+            market_result=ctx.market_result,
+            relative_strength_result=ctx.relative_strength_result,
+            trend_result=TrendResult(
+                overall_score=60.0,
+                alignment_score=60.0,
+                price_position_score=60.0,
+                slope_score=60.0,
+                structure_score=60.0,
+                persistence_score=60.0,
+                high_score=60.0,
+                trend_quality=TrendQuality.WEAK,
+                trend_stage=TrendStage.EARLY,
+                confidence=60.0,
+                reasons=[],
+                warnings=[],
+            ),
+            pattern_result=ctx.pattern_result,
+            volume_result=ctx.volume_result,
+            composite_result=ctx.composite_result,
+            trade_result=ctx.trade_result,
+            risk_result=ctx.risk_result,
+        )
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            require_strong_trend=True,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+        assert "trend quality" in result.summary.approval_reason.lower()
+
+    def test_rejects_bear_market(self):
+        """CustomStrategy should reject bear market."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context(market_regime=Regime.BEAR)
+        config = StrategyConfiguration(strategy_type=StrategyType.CUSTOM)
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is False
+
+    def test_zero_thresholds_skip_all_gates(self):
+        """CustomStrategy should skip all gates when thresholds are 0."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(
+            strategy_type=StrategyType.CUSTOM,
+            minimum_composite_score=0.0,
+            minimum_confidence=0.0,
+            minimum_pattern_score=0.0,
+            minimum_volume_score=0.0,
+            minimum_trend_score=0.0,
+            minimum_rs_score=0.0,
+        )
+        result = strategy.evaluate(ctx, config)
+        assert result.summary.approved is True
+
+    def test_is_deterministic(self):
+        """CustomStrategy should be deterministic."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.CUSTOM)
+        r1 = strategy.evaluate(ctx, config)
+        r2 = strategy.evaluate(ctx, config)
+        assert r1.summary.overall_score == r2.summary.overall_score
+
+    def test_context_preserved(self):
+        """CustomStrategy should preserve context."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.CUSTOM)
+        result = strategy.evaluate(ctx, config)
+        assert result.context is ctx
+
+    def test_validation_flags_present(self):
+        """CustomStrategy should produce validation flags."""
+        strategy = CustomStrategy()
+        ctx = _mock_evaluation_context()
+        config = StrategyConfiguration(strategy_type=StrategyType.CUSTOM)
+        result = strategy.evaluate(ctx, config)
+        assert "VALID_STRATEGY_INPUT" in result.validation_flags
+
+
+# ---------------------------------------------------------------------------
 # Tests: StrategyEngine
 # ---------------------------------------------------------------------------
 
@@ -895,6 +1490,88 @@ class TestStrategyEngine:
         r1 = engine1.evaluate(_strategy_input())
         r2 = engine2.evaluate(_strategy_input())
         assert r1.summary.overall_score == r2.summary.overall_score
+
+
+# ---------------------------------------------------------------------------
+# Tests: All Strategy Types (end-to-end through engine)
+# ---------------------------------------------------------------------------
+
+
+class TestAllStrategyTypes:
+
+    def test_momentum_e2e(self):
+        """Momentum strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.MOMENTUM))
+        assert result.summary.strategy_type == StrategyType.MOMENTUM
+        assert result.decision_trace.strategy_source == "MomentumStrategy"
+
+    def test_breakout_e2e(self):
+        """Breakout strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.BREAKOUT))
+        assert result.summary.strategy_type == StrategyType.BREAKOUT
+        assert result.decision_trace.strategy_source == "BreakoutStrategy"
+
+    def test_trend_following_e2e(self):
+        """Trend Following strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.TREND_FOLLOWING))
+        assert result.summary.strategy_type == StrategyType.TREND_FOLLOWING
+        assert result.decision_trace.strategy_source == "TrendFollowingStrategy"
+
+    def test_growth_e2e(self):
+        """Growth strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.GROWTH))
+        assert result.summary.strategy_type == StrategyType.GROWTH
+        assert result.decision_trace.strategy_source == "GrowthStrategy"
+
+    def test_quality_e2e(self):
+        """Quality strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.QUALITY))
+        assert result.summary.strategy_type == StrategyType.QUALITY
+        assert result.decision_trace.strategy_source == "QualityStrategy"
+
+    def test_custom_e2e(self):
+        """Custom strategy should work end-to-end."""
+        engine = StrategyEngine()
+        result = engine.evaluate(_strategy_input(strategy_type=StrategyType.CUSTOM))
+        assert result.summary.strategy_type == StrategyType.CUSTOM
+        assert result.decision_trace.strategy_source == "CustomStrategy"
+
+    def test_all_types_produce_results(self):
+        """All strategy types should produce valid results."""
+        engine = StrategyEngine()
+        for st in StrategyType:
+            result = engine.evaluate(_strategy_input(strategy_type=st))
+            assert isinstance(result, StrategyResult), f"Failed for {st}"
+            assert result.summary.strategy_type == st, f"Wrong type for {st}"
+            assert result.decision_trace is not None, f"Missing trace for {st}"
+
+    def test_all_types_deterministic(self):
+        """All strategy types should be deterministic."""
+        engine = StrategyEngine()
+        for st in StrategyType:
+            r1 = engine.evaluate(_strategy_input(strategy_type=st))
+            r2 = engine.evaluate(_strategy_input(strategy_type=st))
+            assert r1.summary.overall_score == r2.summary.overall_score, f"Non-deterministic {st}"
+            assert r1.summary.approved == r2.summary.approved, f"Non-deterministic approval {st}"
+
+    def test_all_types_preserve_context(self):
+        """All strategy types should preserve context."""
+        engine = StrategyEngine()
+        for st in StrategyType:
+            result = engine.evaluate(_strategy_input(strategy_type=st))
+            assert result.context is not None, f"Missing context for {st}"
+
+    def test_all_types_have_validation_flags(self):
+        """All strategy types should produce validation flags."""
+        engine = StrategyEngine()
+        for st in StrategyType:
+            result = engine.evaluate(_strategy_input(strategy_type=st))
+            assert "VALID_STRATEGY_INPUT" in result.validation_flags, f"Missing flag for {st}"
 
 
 # ---------------------------------------------------------------------------

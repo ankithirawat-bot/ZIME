@@ -31,6 +31,13 @@ The goal is to build an AI Portfolio Manager that automatically discovers high-q
 - **Sprint 16** -- Pattern Recognition Engine (plugin-based, 5 detectors)
 - **Sprint 17** -- Volume Intelligence Engine (institutional-quality volume analysis)
 - **Sprint 18** -- Composite Decision Engine (weighted multi-engine scoring)
+- **Sprint 19** -- Trade Planning Engine (entry/exit, stop-loss, position sizing, confidence)
+- **Sprint 20** -- Risk Management Engine (per-trade risk, portfolio risk, rejection logic)
+- **Sprint 20.1** -- Shared Core Package (constants, types, validation helpers, enums)
+- **Sprint 21** -- Portfolio Construction Engine (ranked portfolio assembly, allocation)
+- **Sprint 22** -- Simulation Engine (backtest, walk-forward, paper, Monte Carlo, stress test)
+- **Sprint 23A** -- Strategy Infrastructure (StrategyEngine, EvaluationPipeline, StrategyRegistry)
+- **Sprint 23B** -- Strategy Library (6 strategies: Momentum, Breakout, TrendFollowing, Growth, Quality, Custom)
 - **Engineering Foundation** -- pyproject.toml, AGENTS.md, .editorconfig, docs
 
 ---
@@ -395,6 +402,177 @@ Each recommendation should include:
 - Distribution: negative close + volume surge = institutional selling
 - Missing data generates warnings and reduces confidence
 - All tests use mock VolumeSnapshot objects — no internet
+
+---
+
+## Sprint 19 — Trade Planning Engine
+
+**Status:** COMPLETE
+
+**Goal:** Convert CompositeResult + PatternResult into executable trade plans with entry/exit levels, stop-losses, position sizing, and confidence scoring.
+
+**Deliverables:**
+- `backend/trade/__init__.py` -- Package init
+- `backend/trade/models.py` -- TradePlan, TradeDecisionTrace, EntryType, TradeQuality, ExecutionStatus
+- `backend/trade/trade_engine.py` -- TradeEngine with `evaluate(composite, pattern) → TradePlan`
+- `tests/test_trade_engine.py` -- 35 tests covering entry types, stop-loss, targets, R:R, position sizing, confidence, validation
+
+**Test Count:** 35
+
+**Key Design Decisions:**
+- Entry types: breakout (above pattern pivot), pullback (near support), reversal (bottom formation)
+- Stop-loss: below pattern pivot or recent swing low, validated to be below entry
+- Targets: risk-based (2R, 3R, 5R) from entry minus stop distance
+- Position sizing: risk-based (1-2% account risk per trade)
+- TradeDecisionTrace tracks reasoning for audit
+- Validation flags for data quality issues
+
+---
+
+## Sprint 20 — Risk Management Engine
+
+**Status:** COMPLETE
+
+**Goal:** Transform TradePlan + CompositeResult into a capital-preserving execution plan with per-trade risk limits, portfolio risk grading, and rejection logic.
+
+**Deliverables:**
+- `backend/risk/__init__.py` -- Package init
+- `backend/risk/models.py` -- RiskManagementResult, ExposureStatus, TradeRiskGrade, PortfolioRiskGrade, RejectionReason, RiskDecisionTrace
+- `backend/risk/risk_engine.py` -- RiskEngine with `evaluate(trade_plan, composite) → RiskManagementResult`
+- `tests/test_risk_engine.py` -- 30 tests covering risk grades, exposure, position sizing, rejection, portfolio risk
+
+**Test Count:** 30
+
+**Key Design Decisions:**
+- `composite.position_size` is authoritative position limit (not trade_plan.position_size)
+- Per-trade risk grade: Low (<1%), Medium (1-2%), High (2-3%), Extreme (>3%)
+- Portfolio risk grade: Conservative, Moderate, Aggressive, Reckless
+- Exposure status: New, Add, Reduce, Exit
+- RejectionReason enum for why trades are rejected
+- RiskDecisionTrace tracks all risk checks
+
+---
+
+## Sprint 20.1 — Shared Core Package
+
+**Status:** COMPLETE
+
+**Goal:** Extract shared constants, types, and validation helpers into `backend/core/` to eliminate duplication across engines.
+
+**Deliverables:**
+- `backend/core/__init__.py` -- Exports MAX_ITEMS, DEFAULT_MAX_RISK, MIN_RR_ACCEPTABLE, DEFAULT_CONFIDENCE, types, validation helpers
+- `backend/core/constants.py` -- MAX_ITEMS=15, DEFAULT_MAX_RISK=1.0, MIN_RR_ACCEPTABLE=2.0, DEFAULT_CONFIDENCE=50.0
+- `backend/core/types.py` -- Money, Percentage, Confidence, Score type aliases
+- `backend/core/validation.py` -- 6 pure bool-returning validation helpers
+- `backend/core/enums.py` -- Signal, FactorCategory
+
+**Key Design Decisions:**
+- Validation helpers return `bool` not raise exceptions
+- All engines updated to use returned bools directly, removing try/except wrappers
+- Type aliases for clarity (Money=Decimal, Percentage=float, etc.)
+- Single source of truth for shared constants
+
+---
+
+## Sprint 21 — Portfolio Construction Engine
+
+**Status:** COMPLETE
+
+**Goal:** Consume multiple stock analyses and construct a ranked, diversified portfolio with allocation summaries.
+
+**Deliverables:**
+- `backend/portfolio/__init__.py` -- Package init
+- `backend/portfolio/models.py` -- PortfolioCandidate, PortfolioInput, PortfolioResult, PortfolioPosition, PortfolioSummary, AllocationSummary, PortfolioDecisionTrace
+- `backend/portfolio/portfolio_engine.py` -- PortfolioEngine with `evaluate(PortfolioInput) → PortfolioResult`
+- `tests/test_portfolio_engine.py` -- 25 tests covering ranking, allocation, summary, traces
+
+**Test Count:** 25
+
+**Key Design Decisions:**
+- Input: `PortfolioInput` with `PortfolioCandidate` tuples (symbol + RiskManagementResult)
+- Ranking: confidence → risk grade → alphabetical
+- Allocation: positions get weight proportional to confidence, capped by risk limits
+- PortfolioSummary aggregates total allocation, position count, avg confidence
+- PortfolioDecisionTrace tracks ranking and allocation decisions
+
+---
+
+## Sprint 22 — Simulation Engine
+
+**Status:** COMPLETE
+
+**Goal:** Execute backtests, walk-forward tests, paper trading, Monte Carlo simulations, and stress tests against portfolio allocations.
+
+**Deliverables:**
+- `backend/simulation/__init__.py` -- Package init
+- `backend/simulation/models.py` -- SimulationMode (ABC), SimulationModeType (StrEnum), SimulationConfiguration, SimulationInput, SimulationResult, SimulationSummary, SimulationStatistics, EquityCurvePoint, TradeLogEntry, SimulationDecisionTrace
+- `backend/simulation/execution_modes.py` -- BacktestMode, WalkForwardMode, PaperMode, MonteCarloMode, StressTestMode (all inherit SimulationMode ABC)
+- `backend/simulation/simulation_engine.py` -- SimulationEngine with `evaluate(SimulationInput) → SimulationResult`
+- `backend/simulation/metrics.py` -- 9 metric helpers (sharpe, sortino, calmar, max_dd, profit_factor, expectancy, cagr, win_rate, loss_rate)
+- `tests/test_simulation_engine.py` -- 44 tests covering all modes, metrics, configuration, traces
+
+**Test Count:** 44
+
+**Key Design Decisions:**
+- `SimulationMode` ABC with `configure()`, `execute()`, `summary()` abstract methods
+- `SimulationModeType` StrEnum for mode identifiers (backtest, walk_forward, paper, monte_carlo, stress_test)
+- `SimulationConfiguration` dataclass: initial_capital, commission_pct, slippage_pct, risk_per_trade_pct, max_positions, period, interval, start_date, end_date
+- `SimulationInput` takes `SimulationConfiguration` + `PortfolioResult`
+- `_MODES` registry maps SimulationModeType → SimulationMode instance
+- 9 pure metric functions in metrics.py
+
+---
+
+## Sprint 23A — Strategy Infrastructure
+
+**Status:** COMPLETE
+
+**Goal:** Build the strategy abstraction layer that allows different investment strategies to be defined, registered, and evaluated through a common pipeline.
+
+**Deliverables:**
+- `backend/strategy/__init__.py` -- Exports `StrategyEngine`
+- `backend/strategy/models.py` -- StrategyType, StrategyConfiguration, StrategyInput, EvaluationContext, StrategySummary, StrategyDecisionTrace, StrategyResult
+- `backend/strategy/pipeline.py` -- `EvaluationPipeline.run(StrategyInput) → EvaluationContext`
+- `backend/strategy/strategies.py` -- Strategy ABC, MomentumStrategy
+- `backend/strategy/strategy_registry.py` -- StrategyRegistry (register, resolve, has, registered_types)
+- `backend/strategy/strategy_engine.py` -- `StrategyEngine.evaluate(StrategyInput) → StrategyResult`
+- `backend/strategy/test_strategy_engine.py` -- 59 tests covering pipeline, registry, engine, momentum strategy
+
+**Test Count:** 59
+
+**Key Design Decisions:**
+- Single public API: `StrategyEngine.evaluate(StrategyInput) → StrategyResult`
+- `EvaluationPipeline` runs 8 engines in order: Market Regime → RS → Trend → Pattern → Volume → Composite → Trade → Risk
+- `Strategy` ABC with `configure()`, `evaluate()`, `summary()` abstract methods
+- `StrategyRegistry` singleton: register, resolve, has, registered_types
+- `EvaluationContext` frozen dataclass holding all engine results
+- `StrategyDecisionTrace` records pipeline results, strategy scoring, and configuration used
+
+---
+
+## Sprint 23B — Strategy Library
+
+**Status:** COMPLETE
+
+**Goal:** Extend the strategy system with 5 additional investment strategies beyond Momentum, and refine the StrategyConfiguration model.
+
+**Deliverables:**
+- Extended `StrategyType` enum: MOMENTUM, BREAKOUT, TREND_FOLLOWING, GROWTH, QUALITY, CUSTOM
+- `backend/strategy/strategies.py` -- Added BreakoutStrategy, TrendFollowingStrategy, GrowthStrategy, QualityStrategy, CustomStrategy
+- Extended `StrategyConfiguration`: 7 new fields (minimum_pattern_score, minimum_volume_score, minimum_trend_score, minimum_rs_score, require_strong_trend, require_strong_pattern, ignore_pattern)
+- All 6 strategies registered in engine
+- 113 strategy tests (59 original + 54 new)
+
+**Test Count:** 113 (strategy tests), 493 (total project)
+
+**Key Design Decisions:**
+- Each strategy has unique scoring formula based on its investment thesis
+- BreakoutStrategy: favors volume-confirmed breakouts above resistance
+- TrendFollowingStrategy: requires strong trend health, penalizes weak trends
+- GrowthStrategy: emphasizes momentum and trend quality
+- QualityStrategy: balanced approach requiring healthy trend, strong volume, good pattern
+- CustomStrategy: user-configurable thresholds via StrategyConfiguration
+- All 6 strategies registered via StrategyRegistry.register()
 
 ---
 
