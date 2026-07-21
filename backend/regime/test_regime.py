@@ -26,10 +26,10 @@ def check(name: str, condition: bool, detail: str = "") -> None:
     global passed, failed
     if condition:
         passed += 1
-        print("  PASS: %s" % name)
+        print(f"  PASS: {name}")
     else:
         failed += 1
-        print("  FAIL: %s%s" % (name, " (%s)" % detail if detail else ""))
+        print(f"  FAIL: {name}{' (' + detail + ')' if detail else ''}")
 
 
 def make_index(
@@ -276,9 +276,9 @@ check("Regime.BEAR", Regime.BEAR.value == "Bear")
 print("")
 total = passed + failed
 print("=" * 50)
-print("RESULT: %d/%d passed" % (passed, total))
+print(f"RESULT: {passed}/{total} passed")
 if failed == 0:
     print("ALL TESTS PASSED")
 else:
-    print("FAILURES: %d" % failed)
+    print(f"FAILURES: {failed}")
 print("=" * 50)

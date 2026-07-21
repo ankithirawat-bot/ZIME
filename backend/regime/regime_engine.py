@@ -7,11 +7,7 @@ the environment using predefined rules. No AI/LLM involved.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.regime.models import (
-    BreadthData,
-    IndexData,
     MarketRegime,
     MarketSnapshot,
     Regime,
