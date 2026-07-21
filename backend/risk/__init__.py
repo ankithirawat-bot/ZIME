@@ -1,5 +1,140 @@
-"""Risk Management Engine package."""
+"""Risk management engine.
 
-from backend.risk.risk_engine import RiskEngine
+Provides a production-grade risk management engine responsible for portfolio risk
+analysis, exposure measurement, stress testing, and scenario analysis.
+"""
 
-__all__ = ["RiskEngine"]
+from __future__ import annotations
+
+from backend.risk.engine import RiskEngine
+from backend.risk.exceptions import (
+    CalculationError,
+    EmptyPortfolioError,
+    InsufficientDataError,
+    InvalidRiskConfigError,
+    LimitViolationError,
+    RiskError,
+    ScenarioError,
+    ScenarioNotFoundError,
+    StressTestError,
+    VaRCalculationError,
+)
+from backend.risk.exposure import (
+    calculate_cash_exposure,
+    calculate_concentration_index,
+    calculate_exposure,
+    calculate_gross_exposure,
+    calculate_industry_exposure,
+    calculate_long_exposure,
+    calculate_net_exposure,
+    calculate_position_exposure,
+    calculate_sector_exposure,
+    calculate_short_exposure,
+)
+from backend.risk.factory import RiskFactory
+from backend.risk.models import (
+    ConfidenceLevel,
+    Exposure,
+    RiskConfig,
+    RiskDefinition,
+    RiskMetadata,
+    RiskMetrics,
+    RiskPosition,
+    RiskStatistics,
+    ScenarioResult,
+    ScenarioStrategy,
+    StressScenario,
+    StressTestResult,
+    VaRMethod,
+    VaRResult,
+)
+from backend.risk.scenarios import (
+    ScenarioRegistry,
+    build_default_registry,
+    custom_scenario,
+    inflation_surge_scenario,
+    interest_rate_rise_scenario,
+    market_crash_scenario,
+    multi_factor_scenario,
+    run_all_scenarios,
+    run_scenario,
+    single_factor_scenario,
+)
+from backend.risk.stress import (
+    custom_stress,
+    interest_rate_shock_stress,
+    liquidity_shock_stress,
+    market_crash_stress,
+    run_all_stress_tests,
+    run_stress_test,
+    sector_crash_stress,
+    volatility_expansion_stress,
+)
+from backend.risk.var import (
+    calculate_var,
+    historical_var,
+    monte_carlo_var,
+    parametric_var,
+)
+
+__all__ = [
+    "CalculationError",
+    "ConfidenceLevel",
+    "EmptyPortfolioError",
+    "Exposure",
+    "InsufficientDataError",
+    "InvalidRiskConfigError",
+    "LimitViolationError",
+    "RiskConfig",
+    "RiskDefinition",
+    "RiskEngine",
+    "RiskError",
+    "RiskFactory",
+    "RiskMetadata",
+    "RiskMetrics",
+    "RiskPosition",
+    "RiskStatistics",
+    "ScenarioError",
+    "ScenarioNotFoundError",
+    "ScenarioRegistry",
+    "ScenarioResult",
+    "ScenarioStrategy",
+    "StressError",
+    "StressScenario",
+    "StressTestError",
+    "StressTestResult",
+    "VaRCalculationError",
+    "VaRMethod",
+    "VaRResult",
+    "build_default_registry",
+    "calculate_cash_exposure",
+    "calculate_concentration_index",
+    "calculate_exposure",
+    "calculate_gross_exposure",
+    "calculate_industry_exposure",
+    "calculate_long_exposure",
+    "calculate_net_exposure",
+    "calculate_position_exposure",
+    "calculate_sector_exposure",
+    "calculate_short_exposure",
+    "calculate_var",
+    "custom_scenario",
+    "custom_stress",
+    "historical_var",
+    "inflation_surge_scenario",
+    "interest_rate_rise_scenario",
+    "interest_rate_shock_stress",
+    "liquidity_shock_stress",
+    "market_crash_scenario",
+    "market_crash_stress",
+    "monte_carlo_var",
+    "multi_factor_scenario",
+    "parametric_var",
+    "run_all_scenarios",
+    "run_all_stress_tests",
+    "run_scenario",
+    "run_stress_test",
+    "sector_crash_stress",
+    "single_factor_scenario",
+    "volatility_expansion_stress",
+]
