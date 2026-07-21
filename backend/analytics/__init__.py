@@ -1,4 +1,4 @@
-"""Analytics platform shared models and the trend/momentum/volume/RS engines."""
+"""Analytics platform shared models and the trend/momentum/volume/RS/volatility engines."""
 
 from backend.analytics.models import (
     AnalyticsContext,
@@ -24,6 +24,9 @@ from backend.analytics.relative_strength.relative_strength_engine import (
 )
 from backend.analytics.trend.exceptions import TrendError
 from backend.analytics.trend.trend_engine import TrendEngine
+from backend.analytics.volatility.exceptions import VolatilityError
+from backend.analytics.volatility.models import VolatilityConfig, VolatilityState
+from backend.analytics.volatility.volatility_engine import VolatilityEngine
 from backend.analytics.volume.exceptions import VolumeError
 from backend.analytics.volume.models import VolumeConfig, VolumeState
 from backend.analytics.volume.volume_engine import VolumeEngine
@@ -46,6 +49,10 @@ __all__ = [
     "TrendConfig",
     "TrendEngine",
     "TrendError",
+    "VolatilityConfig",
+    "VolatilityEngine",
+    "VolatilityError",
+    "VolatilityState",
     "VolumeConfig",
     "VolumeEngine",
     "VolumeError",

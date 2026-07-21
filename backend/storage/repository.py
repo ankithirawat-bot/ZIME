@@ -71,7 +71,7 @@ class Repository(ABC):
         """
 
     @abstractmethod
-    def supported_types(self) -> tuple[DatasetType, ...]:
+    def supported_dataset_types(self) -> tuple[DatasetType, ...]:
         """Return dataset types this repository supports.
 
         Returns:

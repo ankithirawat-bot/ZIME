@@ -19,3 +19,17 @@ venv/
 # OS
 Thumbs.db
 .DS_Store
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Test cache
+.pytest_cache/
+
+# Type checker
+.mypy_cache/
+
+# Ruff
+.ruff_cache/

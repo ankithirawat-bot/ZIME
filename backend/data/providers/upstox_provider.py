@@ -16,6 +16,7 @@ from backend.data.models import (
 )
 from backend.data.provider import MarketDataProvider
 from backend.data.providers.instrument_mapper import InstrumentMapper
+from backend.data.providers.price_validator import PriceValidator, ValidationResult
 from backend.data.providers.upstox_client import UpstoxClient
 
 
@@ -30,9 +31,11 @@ class UpstoxProvider(MarketDataProvider):
         self,
         client: UpstoxClient | None = None,
         mapper: InstrumentMapper | None = None,
+        validator: PriceValidator | None = None,
     ) -> None:
         self._client = client or UpstoxClient()
         self._mapper = mapper or InstrumentMapper()
+        self._validator = validator or PriceValidator()
 
     def supports(self, data_type: DataType) -> bool:
         """Return True if this provider can supply *data_type*.
@@ -96,23 +99,30 @@ class UpstoxProvider(MarketDataProvider):
             for candle in response.candles
         )
 
+        validation = self._validator.validate(payload)
+        metadata: dict[str, str] = {
+            "instrument_key": instrument_key,
+            "exchange_segment": exchange_segment,
+            "interval": "1d",
+        }
+        if validation.errors:
+            metadata["validation_errors"] = "; ".join(validation.errors)
+        if validation.warnings:
+            metadata["validation_warnings"] = "; ".join(validation.warnings)
+
         return RawDataResponse(
             provider_type=identity,
             payload=payload,
-            metadata={
-                "instrument_key": instrument_key,
-                "exchange_segment": exchange_segment,
-                "interval": "1d",
-            },
+            metadata=metadata,
         )
 
     def validate(self, request: DataRequest) -> bool:
         """Pre-flight validation for Upstox requests.
 
         Checks:
-            - Symbol is mappable
-            - Exchange is supported
-            - Data type is supported
+            - Symbol is mappable.
+            - Exchange is supported.
+            - Data type is supported.
 
         Args:
             request: The request to validate.
@@ -127,6 +137,19 @@ class UpstoxProvider(MarketDataProvider):
         if request.exchange.upper() not in ("NSE", "BSE"):
             return False
         return True
+
+    def validate_data(
+        self, candles: tuple[dict[str, object], ...]
+    ) -> ValidationResult:
+        """Validate candle data quality.
+
+        Args:
+            candles: Candle records.
+
+        Returns:
+            ValidationResult with errors and warnings.
+        """
+        return self._validator.validate(candles)
 
     def provider_name(self) -> str:
         """Unique identifier for this provider."""

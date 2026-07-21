@@ -1,9 +1,8 @@
 """
 Upstox provider tests.
 
-Covers symbol mapping, historical fetch, empty response,
-invalid symbol, rate-limit handling, normalization,
-validation, and provider metadata.
+Covers auth, retry, client, provider, mapper, validator,
+and DataEngine integration.  All HTTP requests mocked.
 """
 
 from __future__ import annotations
@@ -18,8 +17,16 @@ from backend.data.models import (
     ProviderType,
     RawDataResponse,
 )
+from backend.data.providers.auth import AuthManager, UpstoxCredentials
 from backend.data.providers.instrument_mapper import InstrumentMapper
-from backend.data.providers.upstox_client import UpstoxCandle, UpstoxCandlesResponse, UpstoxClient
+from backend.data.providers.price_validator import PriceValidator, ValidationResult
+from backend.data.providers.retry import RetryConfig, RetryResult, compute_delay, execute_with_retry
+from backend.data.providers.upstox_client import (
+    UpstoxAPIError,
+    UpstoxCandle,
+    UpstoxCandlesResponse,
+    UpstoxClient,
+)
 from backend.data.providers.upstox_provider import UpstoxProvider
 
 # ---------------------------------------------------------------------------
@@ -39,70 +46,311 @@ def _make_request(**overrides) -> DataRequest:
     return DataRequest(**defaults)
 
 
-def _fake_candle(ts: str = "2024-06-15T00:00:00+05:30") -> UpstoxCandle:
-    return UpstoxCandle(
-        timestamp=ts,
-        open=100.0,
-        high=105.0,
-        low=99.0,
-        close=103.0,
-        volume=50000.0,
-        open_interest=0.0,
+def _fake_candle(ts: str = "2024-06-15T00:00:00+05:30", **overrides) -> UpstoxCandle:
+    defaults = {
+        "timestamp": ts,
+        "open": 100.0,
+        "high": 105.0,
+        "low": 99.0,
+        "close": 103.0,
+        "volume": 50000.0,
+        "open_interest": 0.0,
+    }
+    defaults.update(overrides)
+    return UpstoxCandle(**defaults)
+
+
+def _make_auth() -> AuthManager:
+    return AuthManager(
+        credentials=UpstoxCredentials(api_key="test_key", access_token="test_token")
     )
 
 
-class AuthenticatedClient(UpstoxClient):
-    """Client that is always authenticated for testing."""
+def _make_retry_config(**overrides) -> RetryConfig:
+    defaults = {"max_attempts": 3, "base_delay": 0.0, "backoff_factor": 1.0, "retryable_errors": (UpstoxAPIError,)}
+    defaults.update(overrides)
+    return RetryConfig(**defaults)
 
-    def __init__(self) -> None:
-        super().__init__(api_key="test_key", access_token="test_token")
 
-    def get_historical_candles(self, instrument_key, interval, from_date, to_date):
-        return UpstoxCandlesResponse(
-            status="success",
-            candles=(_fake_candle(),),
+# ---------------------------------------------------------------------------
+# AuthManager
+# ---------------------------------------------------------------------------
+
+
+class TestAuthManager:
+    def test_not_authenticated(self):
+        am = AuthManager()
+        assert am.is_authenticated is False
+
+    def test_authenticated(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(access_token="tok")
         )
+        assert am.is_authenticated is True
 
-
-class EmptyClient(UpstoxClient):
-    """Client that returns empty candles."""
-
-    def __init__(self) -> None:
-        super().__init__(api_key="test_key", access_token="test_token")
-
-    def get_historical_candles(self, instrument_key, interval, from_date, to_date):
-        return UpstoxCandlesResponse(status="success", candles=())
-
-
-class ErrorClient(UpstoxClient):
-    """Client that returns an error."""
-
-    def __init__(self) -> None:
-        super().__init__(api_key="test_key", access_token="test_token")
-
-    def get_historical_candles(self, instrument_key, interval, from_date, to_date):
-        return UpstoxCandlesResponse(
-            status="error",
-            message="Rate limit exceeded",
-            error_code="RATE_LIMIT",
+    def test_api_key(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(api_key="key123")
         )
+        assert am.api_key == "key123"
 
-
-class MultiCandleClient(UpstoxClient):
-    """Client that returns multiple candles."""
-
-    def __init__(self) -> None:
-        super().__init__(api_key="test_key", access_token="test_token")
-
-    def get_historical_candles(self, instrument_key, interval, from_date, to_date):
-        return UpstoxCandlesResponse(
-            status="success",
-            candles=(
-                UpstoxCandle(timestamp="2024-01-15T00:00:00+05:30", open=100.0, high=105.0, low=99.0, close=103.0, volume=50000.0),
-                UpstoxCandle(timestamp="2024-01-16T00:00:00+05:30", open=103.0, high=108.0, low=102.0, close=107.0, volume=60000.0),
-                UpstoxCandle(timestamp="2024-01-17T00:00:00+05:30", open=107.0, high=110.0, low=106.0, close=109.0, volume=45000.0),
-            ),
+    def test_access_token(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(access_token="tok")
         )
+        assert am.access_token == "tok"
+
+    def test_set_access_token(self):
+        am = AuthManager()
+        assert am.is_authenticated is False
+        am.set_access_token("new_tok")
+        assert am.is_authenticated is True
+        assert am.access_token == "new_tok"
+
+    def test_clear_access_token(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(access_token="tok")
+        )
+        am.clear_access_token()
+        assert am.is_authenticated is False
+
+    def test_preserves_api_key_on_token_update(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(api_key="key", access_token="old")
+        )
+        am.set_access_token("new")
+        assert am.api_key == "key"
+        assert am.access_token == "new"
+
+    def test_credentials_copy(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(api_key="k", access_token="t")
+        )
+        c = am.credentials()
+        assert c.api_key == "k"
+        assert c.access_token == "t"
+
+    def test_refresh_token_success(self):
+        am = AuthManager(refresh_fn=lambda: "refreshed")
+        result = am.refresh_token()
+        assert result == "refreshed"
+        assert am.access_token == "refreshed"
+
+    def test_refresh_token_failure(self):
+        am = AuthManager(refresh_fn=lambda: None)
+        result = am.refresh_token()
+        assert result is None
+
+    def test_refresh_token_no_callback(self):
+        am = AuthManager()
+        result = am.refresh_token()
+        assert result is None
+
+    def test_frozen_credentials(self):
+        am = AuthManager(
+            credentials=UpstoxCredentials(api_key="k", access_token="t")
+        )
+        c = am.credentials()
+        with pytest.raises(AttributeError):
+            c.access_token = "new"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# RetryConfig / RetryResult
+# ---------------------------------------------------------------------------
+
+
+class TestRetryConfig:
+    def test_defaults(self):
+        c = RetryConfig()
+        assert c.max_attempts == 3
+        assert c.base_delay == 1.0
+        assert c.backoff_factor == 2.0
+        assert c.max_delay == 30.0
+        assert c.retryable_errors == ()
+
+    def test_custom(self):
+        c = RetryConfig(max_attempts=5, base_delay=0.5, retryable_errors=(ValueError,))
+        assert c.max_attempts == 5
+        assert c.base_delay == 0.5
+        assert ValueError in c.retryable_errors
+
+
+class TestRetryResult:
+    def test_success(self):
+        r = RetryResult(success=True, result=42, attempts=1)
+        assert r.success is True
+        assert r.result == 42
+        assert r.attempts == 1
+
+    def test_failure(self):
+        r = RetryResult(success=False, error=RuntimeError("fail"), attempts=3)
+        assert r.success is False
+        assert isinstance(r.error, RuntimeError)
+
+
+class TestComputeDelay:
+    def test_first_attempt(self):
+        assert compute_delay(1, base_delay=1.0) == 1.0
+
+    def test_second_attempt(self):
+        assert compute_delay(2, base_delay=1.0, backoff_factor=2.0) == 2.0
+
+    def test_third_attempt(self):
+        assert compute_delay(3, base_delay=1.0, backoff_factor=2.0) == 4.0
+
+    def test_capped(self):
+        assert compute_delay(10, base_delay=1.0, backoff_factor=2.0, max_delay=5.0) == 5.0
+
+
+class TestExecuteWithRetry:
+    def test_success_first_try(self):
+        cfg = RetryConfig(max_attempts=3, base_delay=0.0)
+        result = execute_with_retry(fn=lambda: "ok", config=cfg)
+        assert result.success is True
+        assert result.result == "ok"
+        assert result.attempts == 1
+
+    def test_success_after_retries(self):
+        call_count = 0
+
+        def flaky():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise UpstoxAPIError("rate limit", error_code="RATE_LIMIT")
+            return "ok"
+
+        cfg = RetryConfig(max_attempts=5, base_delay=0.0, retryable_errors=(UpstoxAPIError,))
+        result = execute_with_retry(fn=flaky, config=cfg)
+        assert result.success is True
+        assert result.result == "ok"
+        assert result.attempts == 3
+
+    def test_exhausted(self):
+        def always_fail():
+            raise UpstoxAPIError("always fail", error_code="RATE_LIMIT")
+
+        cfg = RetryConfig(max_attempts=3, base_delay=0.0, retryable_errors=(UpstoxAPIError,))
+        result = execute_with_retry(fn=always_fail, config=cfg)
+        assert result.success is False
+        assert isinstance(result.error, UpstoxAPIError)
+        assert result.attempts == 3
+
+    def test_non_retryable_error(self):
+        def fail_once():
+            raise ValueError("non-retryable")
+
+        cfg = RetryConfig(max_attempts=3, base_delay=0.0, retryable_errors=(UpstoxAPIError,))
+        result = execute_with_retry(fn=fail_once, config=cfg)
+        assert result.success is False
+        assert isinstance(result.error, ValueError)
+        assert result.attempts == 1
+
+    def test_no_retryable_filter_retries_all(self):
+        call_count = 0
+
+        def flaky():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise RuntimeError("any error")
+            return "ok"
+
+        cfg = RetryConfig(max_attempts=3, base_delay=0.0, retryable_errors=(RuntimeError,))
+        result = execute_with_retry(fn=flaky, config=cfg)
+        assert result.success is True
+        assert result.result == "ok"
+
+
+# ---------------------------------------------------------------------------
+# UpstoxClient
+# ---------------------------------------------------------------------------
+
+
+class TestUpstoxClient:
+    def test_not_authenticated(self):
+        client = UpstoxClient()
+        assert client.is_authenticated is False
+
+    def test_authenticated_via_legacy(self):
+        client = UpstoxClient(api_key="k", access_token="t")
+        assert client.is_authenticated is True
+
+    def test_authenticated_via_auth(self):
+        client = UpstoxClient(auth=_make_auth())
+        assert client.is_authenticated is True
+
+    def test_auth_property(self):
+        client = UpstoxClient(auth=_make_auth())
+        assert client.auth is not None
+
+    def test_unauthenticated_fetch(self):
+        client = UpstoxClient()
+        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
+        assert r.status == "error"
+        assert r.error_code == "AUTH_ERROR"
+
+    def test_authenticated_fetch(self):
+        client = AuthenticatedClient()
+        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
+        assert r.status == "success"
+        assert len(r.candles) == 1
+
+    def test_set_access_token(self):
+        client = UpstoxClient()
+        assert client.is_authenticated is False
+        client.set_access_token("new_token")
+        assert client.is_authenticated is True
+
+    def test_clear_access_token(self):
+        client = UpstoxClient(auth=_make_auth())
+        assert client.is_authenticated is True
+        client.clear_access_token()
+        assert client.is_authenticated is False
+
+    def test_api_key_property(self):
+        client = UpstoxClient(auth=AuthManager(
+            credentials=UpstoxCredentials(api_key="my_key")
+        ))
+        assert client.api_key == "my_key"
+
+    def test_get_instrument_default(self):
+        client = UpstoxClient()
+        r = client.get_instrument("RELIANCE", "NSE_EQ")
+        assert r is None
+
+    def test_search_instruments_default(self):
+        client = UpstoxClient()
+        r = client.search_instruments("RELIANCE")
+        assert r == ()
+
+
+# ---------------------------------------------------------------------------
+# UpstoxClient retry integration
+# ---------------------------------------------------------------------------
+
+
+class TestUpstoxClientRetry:
+    def test_retry_succeeds_after_failures(self):
+        client = RetryClient(fail_count=2)
+        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
+        assert r.status == "success"
+        assert len(r.candles) == 1
+        assert client._call_count == 3
+
+    def test_retry_exhausted(self):
+        client = RetryClient(fail_count=5)
+        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
+        assert r.status == "error"
+        assert client._call_count == 3
+        assert r.error_code == "RATE_LIMIT"
+
+    def test_no_retry_on_non_rate_limit(self):
+        client = ErrorClient(error_code="SERVER_ERROR", message="Internal error")
+        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
+        assert r.status == "error"
+        assert r.error_code == "SERVER_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -181,40 +429,17 @@ class TestUpstoxInstrumentResponse:
 
 
 # ---------------------------------------------------------------------------
-# UpstoxClient
+# UpstoxAPIError
 # ---------------------------------------------------------------------------
 
 
-class TestUpstoxClient:
-    def test_not_authenticated(self):
-        client = UpstoxClient()
-        assert client.is_authenticated is False
-
-    def test_authenticated(self):
-        client = UpstoxClient(api_key="key", access_token="token")
-        assert client.is_authenticated is True
-
-    def test_unauthenticated_fetch(self):
-        client = UpstoxClient()
-        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
-        assert r.status == "error"
-        assert r.error_code == "AUTH_ERROR"
-
-    def test_authenticated_fetch(self):
-        client = AuthenticatedClient()
-        r = client.get_historical_candles("RELIANCE", "1d", date(2024, 1, 1), date(2024, 12, 31))
-        assert r.status == "success"
-        assert len(r.candles) == 1
-
-    def test_get_instrument_default(self):
-        client = UpstoxClient()
-        r = client.get_instrument("RELIANCE", "NSE_EQ")
-        assert r is None
-
-    def test_search_instruments_default(self):
-        client = UpstoxClient()
-        r = client.search_instruments("RELIANCE")
-        assert r == ()
+class TestUpstoxAPIError:
+    def test_creation(self):
+        exc = UpstoxAPIError("rate limited", error_code="RATE_LIMIT", status_code=429)
+        assert str(exc) == "rate limited"
+        assert exc.error_code == "RATE_LIMIT"
+        assert exc.status_code == 429
+        assert isinstance(exc, Exception)
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +479,97 @@ class TestInstrumentMapper:
         assert "RELIANCE" in symbols
         assert "TCS" in symbols
         assert len(symbols) > 10
+
+
+# ---------------------------------------------------------------------------
+# PriceValidator
+# ---------------------------------------------------------------------------
+
+
+class TestPriceValidator:
+    def test_valid_candles(self):
+        v = PriceValidator()
+        candles = (
+            {"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0, "volume": 50000.0},
+            {"timestamp": "2024-01-16T00:00:00+05:30", "open": 103.0, "high": 108.0, "low": 102.0, "close": 107.0, "volume": 60000.0},
+        )
+        result = v.validate(candles)
+        assert result.valid is True
+        assert result.errors == ()
+
+    def test_empty_candles(self):
+        v = PriceValidator()
+        result = v.validate(())
+        assert result.valid is True
+        assert len(result.warnings) > 0
+
+    def test_high_below_open(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 105.0, "high": 100.0, "low": 99.0, "close": 103.0, "volume": 50000.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("high" in e and "open" in e for e in result.errors)
+
+    def test_high_below_close(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 102.0, "low": 99.0, "close": 105.0, "volume": 50000.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("high" in e and "close" in e for e in result.errors)
+
+    def test_low_above_open(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 103.0, "close": 103.0, "volume": 50000.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("low" in e and "open" in e for e in result.errors)
+
+    def test_low_above_close(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 104.0, "close": 103.0, "volume": 50000.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("low" in e and "close" in e for e in result.errors)
+
+    def test_negative_volume(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0, "volume": -100.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("negative volume" in e for e in result.errors)
+
+    def test_missing_volume_warning(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0},)
+        result = v.validate(candles)
+        assert result.valid is True
+        assert any("missing volume" in w for w in result.warnings)
+
+    def test_duplicate_timestamp(self):
+        v = PriceValidator()
+        candles = (
+            {"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0, "volume": 50000.0},
+            {"timestamp": "2024-01-15T00:00:00+05:30", "open": 103.0, "high": 108.0, "low": 102.0, "close": 107.0, "volume": 60000.0},
+        )
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("duplicate" in e for e in result.errors)
+
+    def test_missing_ohlc(self):
+        v = PriceValidator()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0},)
+        result = v.validate(candles)
+        assert result.valid is False
+        assert any("missing" in e for e in result.errors)
+
+    def test_not_chronological_warning(self):
+        v = PriceValidator()
+        candles = (
+            {"timestamp": "2024-01-16T00:00:00+05:30", "open": 103.0, "high": 108.0, "low": 102.0, "close": 107.0, "volume": 60000.0},
+            {"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0, "volume": 50000.0},
+        )
+        result = v.validate(candles)
+        assert any("chronological" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -371,6 +687,25 @@ class TestUpstoxProvider:
         assert "volume" in candle
         assert "open_interest" in candle
 
+    def test_fetch_raw_validates_data(self):
+        bad_candles = (
+            UpstoxCandle(timestamp="2024-01-15T00:00:00+05:30", open=100.0, high=105.0, low=99.0, close=103.0, volume=50000.0),
+            UpstoxCandle(timestamp="2024-01-15T00:00:00+05:30", open=103.0, high=108.0, low=102.0, close=107.0, volume=60000.0),
+        )
+        client = AuthenticatedClient(candles=bad_candles)
+        p = UpstoxProvider(client=client)
+        req = _make_request()
+        raw = p.fetch_raw(req)
+        assert "validation_errors" in raw.metadata
+        assert "duplicate" in raw.metadata["validation_errors"]
+
+    def test_validate_data_delegates(self):
+        p = UpstoxProvider()
+        candles = ({"timestamp": "2024-01-15T00:00:00+05:30", "open": 100.0, "high": 105.0, "low": 99.0, "close": 103.0, "volume": 50000.0},)
+        result = p.validate_data(candles)
+        assert isinstance(result, ValidationResult)
+        assert result.valid is True
+
     def test_provider_type_upstox(self):
         assert ProviderType.UPSTOX == "upstox"
 
@@ -460,3 +795,79 @@ class TestRegression:
         for sym in ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN"]:
             assert mapper.has_symbol(sym) is True
             assert mapper.resolve(sym) is not None
+
+
+# ---------------------------------------------------------------------------
+# Test doubles (after tests so they don't interfere with collection)
+# ---------------------------------------------------------------------------
+
+
+class AuthenticatedClient(UpstoxClient):
+    """Client that is always authenticated for testing."""
+
+    def __init__(self, candles: tuple[UpstoxCandle, ...] | None = None) -> None:
+        super().__init__(auth=_make_auth())
+        self._test_candles = candles or (_fake_candle(),)
+
+    def _fetch_candles(self, instrument_key, interval, from_date, to_date):
+        return UpstoxCandlesResponse(status="success", candles=self._test_candles)
+
+
+class EmptyClient(UpstoxClient):
+    """Client that returns empty candles."""
+
+    def __init__(self) -> None:
+        super().__init__(auth=_make_auth())
+
+    def _fetch_candles(self, instrument_key, interval, from_date, to_date):
+        return UpstoxCandlesResponse(status="success", candles=())
+
+
+class ErrorClient(UpstoxClient):
+    """Client that returns an error."""
+
+    def __init__(self, error_code: str = "RATE_LIMIT", message: str = "Rate limit exceeded") -> None:
+        super().__init__(auth=_make_auth())
+        self._error_code = error_code
+        self._message = message
+
+    def _fetch_candles(self, instrument_key, interval, from_date, to_date):
+        raise UpstoxAPIError(self._message, error_code=self._error_code)
+
+
+class RetryClient(UpstoxClient):
+    """Client that fails N times then succeeds (overrides internal _fetch_candles)."""
+
+    def __init__(self, fail_count: int = 2) -> None:
+        super().__init__(
+            auth=_make_auth(),
+            retry_config=_make_retry_config(max_attempts=3),
+        )
+        self._call_count = 0
+        self._fail_count = fail_count
+
+    def _fetch_candles(self, instrument_key, interval, from_date, to_date):
+        self._call_count += 1
+        if self._call_count <= self._fail_count:
+            raise UpstoxAPIError("Rate limit exceeded", error_code="RATE_LIMIT", status_code=429)
+        return UpstoxCandlesResponse(
+            status="success",
+            candles=(_fake_candle(ts="2024-06-15T00:00:00+05:30"),),
+        )
+
+
+class MultiCandleClient(UpstoxClient):
+    """Client that returns multiple candles."""
+
+    def __init__(self) -> None:
+        super().__init__(auth=_make_auth())
+
+    def _fetch_candles(self, instrument_key, interval, from_date, to_date):
+        return UpstoxCandlesResponse(
+            status="success",
+            candles=(
+                UpstoxCandle(timestamp="2024-01-15T00:00:00+05:30", open=100.0, high=105.0, low=99.0, close=103.0, volume=50000.0),
+                UpstoxCandle(timestamp="2024-01-16T00:00:00+05:30", open=103.0, high=108.0, low=102.0, close=107.0, volume=60000.0),
+                UpstoxCandle(timestamp="2024-01-17T00:00:00+05:30", open=107.0, high=110.0, low=106.0, close=109.0, volume=45000.0),
+            ),
+        )

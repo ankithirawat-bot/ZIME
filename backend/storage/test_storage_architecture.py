@@ -81,7 +81,7 @@ class FakeRepository(Repository):
     def exists(self, dataset_type: DatasetType, symbol: str) -> bool:
         return self._should_exist
 
-    def supported_types(self) -> tuple[DatasetType, ...]:
+    def supported_dataset_types(self) -> tuple[DatasetType, ...]:
         return self._supported
 
 
@@ -377,7 +377,7 @@ class TestRepositoryABC:
     def test_fake_repository_implements_interface(self):
         repo = FakeRepository()
         assert isinstance(repo, Repository)
-        assert DatasetType.PRICE_DAILY in repo.supported_types()
+        assert DatasetType.PRICE_DAILY in repo.supported_dataset_types()
 
     def test_store_returns_result(self):
         repo = FakeRepository()
