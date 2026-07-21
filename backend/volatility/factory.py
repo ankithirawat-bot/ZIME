@@ -1,6 +1,6 @@
 """Volatility forecast factory.
 
-Constructs fully configured volatility forecast engines using dependency injection.
+Constructs fully configured engines using dependency injection.
 """
 
 from __future__ import annotations
@@ -14,11 +14,7 @@ from backend.volatility.models import VolatilityConfig
 
 
 class VolatilityFactory:
-    """Factory for constructing fully configured VolatilityEngine instances.
-
-    Uses dependency injection to construct all required components.
-    No global state is maintained.
-    """
+    """Factory for constructing configured VolatilityEngine instances."""
 
     @staticmethod
     def create(
@@ -34,64 +30,55 @@ class VolatilityFactory:
         """Create a fully configured VolatilityEngine.
 
         Args:
-            config:             Volatility configuration (defaults created).
+            config:             Configuration (defaults created).
             forecast_engine:    Forecast engine (defaults created).
             comparer:           Model comparer (defaults created).
-            portfolio_engine:   Optional portfolio engine for integration.
-            risk_engine:        Optional risk engine for integration.
-            sizing_engine:      Optional sizing engine for integration.
-            strategy_engine:    Optional strategy engine for integration.
-            backtesting_engine: Optional backtesting engine for integration.
+            portfolio_engine:   Optional portfolio engine.
+            risk_engine:        Optional risk engine.
+            sizing_engine:      Optional sizing engine.
+            strategy_engine:    Optional strategy engine.
+            backtesting_engine: Optional backtesting engine.
 
         Returns:
-            Configured VolatilityEngine instance.
+            Configured VolatilityEngine.
         """
         config = config or VolatilityConfig()
         forecast_engine = forecast_engine or ForecastEngine()
         comparer = comparer or ModelComparer()
-
         return VolatilityEngine(
-            config=config,
-            forecast_engine=forecast_engine,
-            comparer=comparer,
-            portfolio_engine=portfolio_engine,
-            risk_engine=risk_engine,
-            sizing_engine=sizing_engine,
-            strategy_engine=strategy_engine,
+            config=config, forecast_engine=forecast_engine, comparer=comparer,
+            portfolio_engine=portfolio_engine, risk_engine=risk_engine,
+            sizing_engine=sizing_engine, strategy_engine=strategy_engine,
             backtesting_engine=backtesting_engine,
         )
 
     @staticmethod
-    def create_with_models(
-        models: dict[str, Any],
+    def create_with_estimators(
+        estimators: dict[str, Any],
         config: VolatilityConfig | None = None,
     ) -> VolatilityEngine:
-        """Create a VolatilityEngine with custom models.
-
-        Default models are still registered; custom models override.
+        """Create with custom estimators.
 
         Args:
-            models: Custom volatility models (name -> estimator instance).
-            config: Volatility configuration (defaults created).
+            estimators: Custom estimators (name -> instance).
+            config:     Configuration (defaults created).
 
         Returns:
-            VolatilityEngine with custom models.
+            VolatilityEngine.
         """
-        forecast_engine = ForecastEngine()
-        for name, estimator in models.items():
-            forecast_engine.register_estimator(name, estimator)
-        return VolatilityEngine(config=config, forecast_engine=forecast_engine)
+        fe = ForecastEngine()
+        for name, est in estimators.items():
+            fe.register_estimator(name, est)
+        return VolatilityEngine(config=config, forecast_engine=fe)
 
     @staticmethod
-    def create_from_config(
-        config: VolatilityConfig,
-    ) -> VolatilityEngine:
-        """Create a VolatilityEngine from a configuration.
+    def create_from_config(config: VolatilityConfig) -> VolatilityEngine:
+        """Create from configuration.
 
         Args:
-            config: Volatility configuration.
+            config: Configuration.
 
         Returns:
-            VolatilityEngine using the provided config.
+            VolatilityEngine.
         """
         return VolatilityEngine(config=config)

@@ -15,7 +15,7 @@ class InvalidVolatilityConfigError(VolatilityError):
 
 
 class InsufficientDataError(VolatilityError):
-    """Raised when insufficient data is provided for volatility calculations."""
+    """Raised when insufficient data is provided."""
 
     def __init__(self, message: str) -> None:
         super().__init__(f"Insufficient data: {message}")
@@ -30,7 +30,7 @@ class EstimationError(VolatilityError):
 
 
 class ConvergenceError(VolatilityError):
-    """Raised when model estimation fails to converge."""
+    """Raised when estimation fails to converge."""
 
     def __init__(self, model: str, message: str = "") -> None:
         self.model = model
@@ -41,15 +41,30 @@ class ConvergenceError(VolatilityError):
 
 
 class ForecastError(VolatilityError):
-    """Raised when volatility forecasting fails."""
+    """Raised when forecasting fails."""
 
     def __init__(self, message: str) -> None:
         super().__init__(f"Forecast error: {message}")
 
 
 class ModelNotFoundError(VolatilityError):
-    """Raised when a volatility model is not found."""
+    """Raised when a model is not found."""
 
     def __init__(self, name: str) -> None:
         self.name = name
-        super().__init__(f"Volatility model not found: {name}")
+        super().__init__(f"Model not found: {name}")
+
+
+class UpdateError(VolatilityError):
+    """Raised when a recursive model update fails."""
+
+    def __init__(self, model: str, message: str) -> None:
+        self.model = model
+        super().__init__(f"Update error ({model}): {message}")
+
+
+class DiagnosticsError(VolatilityError):
+    """Raised when model diagnostics fail."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(f"Diagnostics error: {message}")

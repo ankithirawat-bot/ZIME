@@ -1,7 +1,7 @@
 """Volatility forecast models.
 
-Frozen dataclasses for volatility definitions, configurations,
-forecasts, results, and protocols.
+Frozen dataclasses for definitions, requests, forecasts, diagnostics,
+comparison results, and estimator protocols.
 """
 
 from __future__ import annotations
@@ -13,13 +13,13 @@ from typing import Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class VolatilityMetadata:
-    """Metadata for a volatility forecast definition.
+    """Metadata for a volatility definition.
 
     Attributes:
-        name:        Volatility analysis name.
-        description: Volatility analysis description.
+        name:        Name.
+        description: Description.
         version:     Schema version.
-        author:      Volatility analysis author.
+        author:      Author.
         created_at:  Creation timestamp.
         tags:        Searchable tags.
     """
@@ -37,18 +37,17 @@ class VolatilityConfig:
     """Configuration for volatility forecasting.
 
     Attributes:
-        model:           Default volatility model name.
-        lookback:        Lookback window for historical calculations.
+        model:           Default model name.
+        lookback:        Lookback window.
         horizon:         Default forecast horizon in days.
-        annual_factor:   Annualization factor (252 for daily data).
-        confidence_level: Confidence level for intervals (default 0.95).
+        annual_factor:   Annualization factor (default 252).
+        confidence_level: Confidence level (default 0.95).
         ewma_lambda:     EWMA decay factor (default 0.94).
-        garch_p:         GARCH lag order p (default 1).
-        garch_q:         GARCH lag order q (default 1).
-        max_iterations:  Maximum iterations for parameter estimation.
+        garch_p:         GARCH lag p (default 1).
+        garch_q:         GARCH lag q (default 1).
+        max_iterations:  Max iterations for estimation.
         tolerance:       Convergence tolerance.
-        min_periods:     Minimum number of observations required.
-        use_variance_targeting: Whether to use variance targeting.
+        min_periods:     Minimum observations required.
     """
 
     model: str = "garch"
@@ -62,7 +61,40 @@ class VolatilityConfig:
     max_iterations: int = 1000
     tolerance: float = 1e-8
     min_periods: int = 20
-    use_variance_targeting: bool = True
+
+
+@dataclass(frozen=True)
+class ForecastDefinition:
+    """Complete forecast definition.
+
+    Attributes:
+        metadata: Metadata.
+        config:   Configuration.
+    """
+
+    metadata: VolatilityMetadata
+    config: VolatilityConfig
+
+
+@dataclass(frozen=True)
+class ForecastRequest:
+    """Request for a volatility forecast.
+
+    Attributes:
+        symbol:       Ticker symbol.
+        returns:      Historical returns.
+        model:        Model name override.
+        horizon:      Forecast horizon override.
+        config:       Configuration override.
+        use_diagnostics: Whether to compute diagnostics.
+    """
+
+    symbol: str = ""
+    returns: tuple[float, ...] = field(default_factory=tuple)
+    model: str = ""
+    horizon: int = 20
+    config: VolatilityConfig | None = None
+    use_diagnostics: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,9 +102,9 @@ class ConfidenceInterval:
     """Confidence interval for a volatility forecast.
 
     Attributes:
-        lower:          Lower bound.
-        expected:       Expected (central) volatility.
-        upper:          Upper bound.
+        lower:           Lower bound.
+        expected:        Expected volatility.
+        upper:           Upper bound.
         confidence_level: Confidence level.
     """
 
@@ -87,16 +119,16 @@ class VolatilityForecast:
     """Volatility forecast result.
 
     Attributes:
-        model:           Model name used for forecast.
+        model:           Model name.
         horizon:         Forecast horizon in days.
         forecast:        Forecast volatility (annualized).
         variance:        Forecast variance.
         confidence:      Confidence interval.
-        conditional_vol: Conditional volatility series (in-sample).
+        conditional_vol: In-sample conditional volatility.
         parameters:      Model parameters.
         converged:       Whether estimation converged.
-        iterations:      Number of iterations used.
-        log_likelihood:  Log-likelihood of the model.
+        iterations:      Iterations used.
+        log_likelihood:  Log-likelihood.
     """
 
     model: str = ""
@@ -113,16 +145,16 @@ class VolatilityForecast:
 
 @dataclass(frozen=True)
 class ForecastResult:
-    """Complete forecast result for one or more horizons.
+    """Complete forecast result.
 
     Attributes:
-        symbol:       Ticker symbol.
-        model:        Model name used.
-        forecasts:    Forecasts by horizon.
-        current_vol:  Current volatility estimate.
+        symbol:        Ticker symbol.
+        model:         Model name.
+        forecasts:     Forecasts by horizon.
+        current_vol:   Current volatility estimate.
         long_term_vol: Long-term average volatility.
-        errors:       Forecast errors (if actuals available).
-        elapsed:      Calculation time in seconds.
+        diagnostics:   Model diagnostics.
+        elapsed:       Calculation time in seconds.
     """
 
     symbol: str = ""
@@ -130,8 +162,33 @@ class ForecastResult:
     forecasts: dict[int, VolatilityForecast] = field(default_factory=dict)
     current_vol: float = 0.0
     long_term_vol: float = 0.0
-    errors: dict[str, float] = field(default_factory=dict)
+    diagnostics: ModelDiagnostics | None = None
     elapsed: float = 0.0
+
+
+@dataclass(frozen=True)
+class ModelDiagnostics:
+    """Model diagnostic information.
+
+    Attributes:
+        residual_variance: Variance of residuals.
+        persistence:       Model persistence (alpha+beta for GARCH).
+        half_life:         Volatility half-life in days.
+        is_stationary:     Whether model satisfies stationarity.
+        information_criteria: Information criteria dict.
+        convergence_status: Convergence status description.
+        n_observations:    Number of observations used.
+        n_parameters:      Number of model parameters.
+    """
+
+    residual_variance: float = 0.0
+    persistence: float = 0.0
+    half_life: float = 0.0
+    is_stationary: bool = True
+    information_criteria: dict[str, float] = field(default_factory=dict)
+    convergence_status: str = "converged"
+    n_observations: int = 0
+    n_parameters: int = 0
 
 
 @dataclass(frozen=True)
@@ -142,13 +199,13 @@ class ForecastMetrics:
         rmse:           Root Mean Squared Error.
         mae:            Mean Absolute Error.
         mape:           Mean Absolute Percentage Error.
-        bias:           Forecast bias (mean error).
-        stability:      Forecast stability (std of errors).
+        bias:           Forecast bias.
+        stability:      Forecast stability.
         log_likelihood: Log-likelihood.
         aic:            Akaike Information Criterion.
         bic:            Bayesian Information Criterion.
-        n_observations: Number of observations used.
-        n_parameters:   Number of model parameters.
+        n_observations: Observations used.
+        n_parameters:   Model parameters.
     """
 
     rmse: float = 0.0
@@ -165,13 +222,13 @@ class ForecastMetrics:
 
 @dataclass(frozen=True)
 class ModelComparison:
-    """Model comparison result.
+    """Model comparison entry.
 
     Attributes:
-        model_name:  Model name.
-        rank:        Overall rank (1 = best).
-        metrics:     ForecastMetrics for this model.
-        score:       Composite score.
+        model_name: Model name.
+        rank:       Rank (1 = best).
+        metrics:    Forecast metrics.
+        score:      Composite score.
     """
 
     model_name: str = ""
@@ -182,14 +239,14 @@ class ModelComparison:
 
 @dataclass(frozen=True)
 class ForecastStatistics:
-    """Volatility forecast statistics.
+    """Forecast statistics.
 
     Attributes:
-        total_forecasts:   Total forecasts performed.
-        failed_models:     Number of model failures.
-        warnings:          Forecast warnings.
-        errors:            Forecast error details.
-        elapsed_seconds:   Calculation time.
+        total_forecasts: Total forecasts performed.
+        failed_models:   Number of failures.
+        warnings:        Warnings.
+        errors:          Error details.
+        elapsed_seconds: Calculation time.
     """
 
     total_forecasts: int = 0
@@ -199,42 +256,20 @@ class ForecastStatistics:
     elapsed_seconds: float = 0.0
 
 
-@dataclass(frozen=True)
-class ForecastDefinition:
-    """Complete volatility forecast definition.
-
-    Attributes:
-        metadata: Forecast metadata.
-        config:   Forecast configuration.
-    """
-
-    metadata: VolatilityMetadata
-    config: VolatilityConfig
-
-
 @runtime_checkable
 class VolatilityEstimator(Protocol):
-    """Protocol for volatility estimation models."""
+    """Protocol for volatility estimators."""
 
     @property
     def name(self) -> str:
-        """Model name identifier."""
         ...
 
-    def estimate(
+    def fit(
         self,
         returns: tuple[float, ...],
         config: VolatilityConfig,
     ) -> VolatilityForecast:
-        """Estimate volatility from returns.
-
-        Args:
-            returns: Historical returns.
-            config:  Volatility configuration.
-
-        Returns:
-            VolatilityForecast with estimated volatility.
-        """
+        """Fit model and return in-sample estimate."""
         ...
 
     def forecast(
@@ -243,14 +278,30 @@ class VolatilityEstimator(Protocol):
         horizon: int,
         config: VolatilityConfig,
     ) -> VolatilityForecast:
-        """Forecast volatility for a given horizon.
+        """Forecast volatility for given horizon."""
+        ...
 
-        Args:
-            returns: Historical returns.
-            horizon: Forecast horizon in days.
-            config:  Volatility configuration.
+    def forecast_path(
+        self,
+        returns: tuple[float, ...],
+        horizon: int,
+        config: VolatilityConfig,
+    ) -> tuple[VolatilityForecast, ...]:
+        """Return forecast for each step up to horizon."""
+        ...
 
-        Returns:
-            VolatilityForecast with forecast.
-        """
+    def update(
+        self,
+        returns: tuple[float, ...],
+        new_return: float,
+        config: VolatilityConfig,
+    ) -> VolatilityForecast:
+        """Recursively update with a single new return."""
+        ...
+
+    def diagnostics(
+        self,
+        forecast: VolatilityForecast,
+    ) -> ModelDiagnostics:
+        """Compute diagnostics for a fitted model."""
         ...

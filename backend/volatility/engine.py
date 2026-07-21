@@ -1,7 +1,7 @@
 """Volatility forecast engine.
 
-Core volatility forecasting engine for estimating future volatility
-using multiple statistical models.
+Core forecasting engine providing unified access to multiple
+volatility models with integration points for other engines.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from backend.volatility.comparison import ModelComparer
 from backend.volatility.forecast import ForecastEngine
 from backend.volatility.models import (
     ForecastMetrics,
+    ForecastRequest,
     ForecastResult,
     ForecastStatistics,
     ModelComparison,
@@ -23,9 +24,8 @@ from backend.volatility.models import (
 class VolatilityEngine:
     """Core volatility forecasting engine.
 
-    Provides unified access to multiple volatility models for forecasting,
-    comparison, and analysis. Optionally integrates with portfolio, risk,
-    sizing, strategy, and backtesting engines.
+    Provides unified access to Historical, EWMA, GARCH, EGARCH, and
+    GJR-GARCH models. Accepts optional engine dependencies via DI.
     """
 
     def __init__(
@@ -42,7 +42,7 @@ class VolatilityEngine:
         """Initialize the engine.
 
         Args:
-            config:             Volatility configuration (defaults created).
+            config:             Configuration (defaults created).
             forecast_engine:    Forecast engine (defaults created).
             comparer:           Model comparer (defaults created).
             portfolio_engine:   Optional portfolio engine.
@@ -68,7 +68,7 @@ class VolatilityEngine:
 
     @property
     def forecast_engine(self) -> ForecastEngine:
-        """Access the underlying forecast engine."""
+        """Underlying forecast engine."""
         return self._forecast_engine
 
     def forecast(
@@ -78,17 +78,7 @@ class VolatilityEngine:
         horizon: int | None = None,
         config: VolatilityConfig | None = None,
     ) -> VolatilityForecast:
-        """Forecast volatility for a single horizon.
-
-        Args:
-            returns: Historical returns.
-            model:   Model name (default from config).
-            horizon: Forecast horizon in days (default from config).
-            config:  Volatility configuration (default from engine).
-
-        Returns:
-            VolatilityForecast with forecast.
-        """
+        """Forecast volatility for a single horizon."""
         self._total_forecasts += 1
         cfg = config or self._config
         return self._forecast_engine.forecast(returns, model, horizon, cfg)
@@ -100,17 +90,7 @@ class VolatilityEngine:
         horizons: tuple[int, ...] | None = None,
         config: VolatilityConfig | None = None,
     ) -> ForecastResult:
-        """Forecast volatility at multiple horizons.
-
-        Args:
-            returns:  Historical returns.
-            model:    Model name (default from config).
-            horizons: Forecast horizons (default: 1, 5, 10, 20, 60, 252).
-            config:   Volatility configuration (default from engine).
-
-        Returns:
-            ForecastResult with forecasts by horizon.
-        """
+        """Forecast at multiple horizons."""
         self._total_forecasts += 1
         cfg = config or self._config
         return self._forecast_engine.forecast_multiple(returns, model, horizons, cfg)
@@ -122,17 +102,7 @@ class VolatilityEngine:
         horizon: int = 20,
         config: VolatilityConfig | None = None,
     ) -> tuple[ModelComparison, ...]:
-        """Compare all models and return ranked results.
-
-        Args:
-            returns:         Historical returns for estimation.
-            actual_returns:  Actual subsequent returns for evaluation.
-            horizon:         Forecast horizon in days.
-            config:          Volatility configuration (default from engine).
-
-        Returns:
-            Tuple of ModelComparison sorted by rank.
-        """
+        """Compare all models and return ranked results."""
         cfg = config or self._config
         forecasts = self._forecast_engine.compare_models(returns, horizon, cfg)
         return self._comparer.compare(forecasts, actual_returns, cfg)
@@ -145,23 +115,10 @@ class VolatilityEngine:
         horizon: int = 20,
         config: VolatilityConfig | None = None,
     ) -> tuple[VolatilityForecast, ...]:
-        """Generate rolling volatility forecasts.
-
-        Args:
-            returns:  Historical returns.
-            window:   Rolling window size.
-            model:    Model name (default from config).
-            horizon:  Forecast horizon in days.
-            config:   Volatility configuration (default from engine).
-
-        Returns:
-            Tuple of VolatilityForecast for each window.
-        """
+        """Generate rolling forecasts."""
         self._total_forecasts += 1
         cfg = config or self._config
-        return self._forecast_engine.rolling_forecast(
-            returns, window, model, horizon, cfg
-        )
+        return self._forecast_engine.rolling_forecast(returns, window, model, horizon, cfg)
 
     def forecast_term_structure(
         self,
@@ -169,19 +126,18 @@ class VolatilityEngine:
         model: str | None = None,
         config: VolatilityConfig | None = None,
     ) -> ForecastResult:
-        """Generate the full volatility term structure.
-
-        Args:
-            returns: Historical returns.
-            model:   Model name (default from config).
-            config:  Volatility configuration (default from engine).
-
-        Returns:
-            ForecastResult with term structure forecasts.
-        """
+        """Generate full term structure."""
         self._total_forecasts += 1
         cfg = config or self._config
         return self._forecast_engine.forecast_term_structure(returns, model, cfg)
+
+    def batch_forecast(
+        self,
+        requests: tuple[ForecastRequest, ...],
+    ) -> tuple[ForecastResult, ...]:
+        """Run batch forecast requests."""
+        self._total_forecasts += len(requests)
+        return self._forecast_engine.batch_forecast(requests)
 
     def compute_metrics(
         self,
@@ -189,16 +145,7 @@ class VolatilityEngine:
         actual_returns: tuple[float, ...],
         config: VolatilityConfig | None = None,
     ) -> ForecastMetrics:
-        """Compute forecast quality metrics for a single forecast.
-
-        Args:
-            forecast:       Volatility forecast.
-            actual_returns: Actual subsequent returns.
-            config:         Volatility configuration (default from engine).
-
-        Returns:
-            ForecastMetrics with quality metrics.
-        """
+        """Compute forecast quality metrics."""
         cfg = config or self._config
         return self._comparer.compute_metrics(forecast, actual_returns, cfg)
 
@@ -209,17 +156,7 @@ class VolatilityEngine:
         warnings: tuple[str, ...] = (),
         errors: tuple[str, ...] = (),
     ) -> ForecastStatistics:
-        """Generate forecast statistics.
-
-        Args:
-            elapsed:       Elapsed time in seconds.
-            failed_models: Number of model failures.
-            warnings:      Forecast warnings.
-            errors:        Forecast error details.
-
-        Returns:
-            ForecastStatistics with calculation stats.
-        """
+        """Generate forecast statistics."""
         return ForecastStatistics(
             total_forecasts=self._total_forecasts,
             failed_models=failed_models,

@@ -1,8 +1,7 @@
 """Volatility forecast engine.
 
-Provides a production-grade volatility forecasting engine capable of estimating
-future volatility using multiple statistical models (Historical, EWMA, GARCH,
-EGARCH, GJR-GARCH).
+Provides a production-grade volatility forecasting engine using multiple
+statistical models: Historical, EWMA, GARCH, EGARCH, GJR-GARCH.
 """
 
 from __future__ import annotations
@@ -18,11 +17,13 @@ from backend.volatility.estimators import (
 )
 from backend.volatility.exceptions import (
     ConvergenceError,
+    DiagnosticsError,
     EstimationError,
     ForecastError,
     InsufficientDataError,
     InvalidVolatilityConfigError,
     ModelNotFoundError,
+    UpdateError,
     VolatilityError,
 )
 from backend.volatility.factory import VolatilityFactory
@@ -31,9 +32,11 @@ from backend.volatility.models import (
     ConfidenceInterval,
     ForecastDefinition,
     ForecastMetrics,
+    ForecastRequest,
     ForecastResult,
     ForecastStatistics,
     ModelComparison,
+    ModelDiagnostics,
     VolatilityConfig,
     VolatilityForecast,
     VolatilityMetadata,
@@ -42,6 +45,7 @@ from backend.volatility.models import (
 __all__ = [
     "ConfidenceInterval",
     "ConvergenceError",
+    "DiagnosticsError",
     "EWMAAEstimator",
     "EGARCHEstimator",
     "EstimationError",
@@ -49,6 +53,7 @@ __all__ = [
     "ForecastEngine",
     "ForecastError",
     "ForecastMetrics",
+    "ForecastRequest",
     "ForecastResult",
     "ForecastStatistics",
     "GARCHEstimator",
@@ -58,7 +63,9 @@ __all__ = [
     "InvalidVolatilityConfigError",
     "ModelComparer",
     "ModelComparison",
+    "ModelDiagnostics",
     "ModelNotFoundError",
+    "UpdateError",
     "VolatilityConfig",
     "VolatilityEngine",
     "VolatilityError",
