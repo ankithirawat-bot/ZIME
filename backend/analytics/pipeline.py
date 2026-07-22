@@ -13,7 +13,12 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
+from backend.analytics.execution_report import (
+    EngineExecutionResult,
+    PipelineExecutionReport,
+)
 from backend.analytics.models import AnalyticsContext, AnalyticsFact
 from backend.analytics.registry import (
     AnalyticsRegistry,
@@ -33,6 +38,7 @@ class PipelineResult:
         total_duration:  Total wall-clock seconds for the pipeline run.
         success_count:   Number of engines that completed successfully.
         failure_count:   Number of engines that raised recoverable errors.
+        report:          Structured execution telemetry report.
     """
 
     facts: dict[str, AnalyticsFact] = field(default_factory=dict)
@@ -42,6 +48,9 @@ class PipelineResult:
     total_duration: float = 0.0
     success_count: int = 0
     failure_count: int = 0
+    report: PipelineExecutionReport = field(
+        default_factory=PipelineExecutionReport
+    )
 
 
 class AnalyticsPipeline:
@@ -94,18 +103,49 @@ class AnalyticsPipeline:
         facts: dict[str, AnalyticsFact] = {}
         errors: dict[str, str] = {}
         times: dict[str, float] = {}
+        engine_reports: list[EngineExecutionResult] = []
         start = time.perf_counter()
 
         for engine in self._registry.ordered():
             engine_start = time.perf_counter()
+            engine_started = datetime.now(UTC)
+            warnings: tuple[str, ...] = ()
+            exception_type: str | None = None
+            status: str = "SUCCESS"
+
             try:
                 fact = engine.analyze(context)
                 facts[fact.name] = fact
+                warnings = tuple(fact.metadata.get("warnings", []))
             except Exception as exc:
+                status = "FAILED"
                 errors[engine._engine_name()] = str(exc)
-            times[engine._engine_name()] = time.perf_counter() - engine_start
+                exception_type = f"{type(exc).__module__}.{type(exc).__qualname__}"
+
+            engine_finished = datetime.now(UTC)
+            duration_s = time.perf_counter() - engine_start
+            times[engine._engine_name()] = duration_s
+
+            engine_reports.append(
+                EngineExecutionResult(
+                    engine_name=engine._engine_name(),
+                    started_at=engine_started,
+                    finished_at=engine_finished,
+                    duration_ms=round(duration_s * 1000, 2),
+                    status=status,
+                    warnings=warnings,
+                    exception_type=exception_type,
+                )
+            )
 
         total = time.perf_counter() - start
+
+        report = PipelineExecutionReport(
+            engines=tuple(engine_reports),
+            total_duration_ms=round(total * 1000, 2),
+            success_count=len(facts),
+            failure_count=len(errors),
+        )
 
         return PipelineResult(
             facts=facts,
@@ -115,4 +155,5 @@ class AnalyticsPipeline:
             total_duration=total,
             success_count=len(facts),
             failure_count=len(errors),
+            report=report,
         )
