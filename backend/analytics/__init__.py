@@ -1,5 +1,6 @@
-"""Analytics platform shared models and the trend/momentum/volume/RS/volatility engines."""
+"""Analytics platform shared models, base engine, pipeline, and the trend/momentum/volume/RS/volatility engines."""
 
+from backend.analytics.base_engine import AnalyticsEngineBase
 from backend.analytics.models import (
     AnalyticsContext,
     AnalyticsFact,
@@ -14,6 +15,7 @@ from backend.analytics.momentum.exceptions import (
 )
 from backend.analytics.momentum.models import MomentumConfig, MomentumState
 from backend.analytics.momentum.momentum_engine import MomentumEngine
+from backend.analytics.pipeline import AnalyticsPipeline, PipelineResult
 from backend.analytics.relative_strength.exceptions import RelativeStrengthError
 from backend.analytics.relative_strength.models import (
     RelativeStrengthConfig,
@@ -33,7 +35,9 @@ from backend.analytics.volume.volume_engine import VolumeEngine
 
 __all__ = [
     "AnalyticsContext",
+    "AnalyticsEngineBase",
     "AnalyticsFact",
+    "AnalyticsPipeline",
     "CorporateAction",
     "InsufficientDataError",
     "MarketBar",
@@ -41,6 +45,7 @@ __all__ = [
     "MomentumEngine",
     "MomentumError",
     "MomentumState",
+    "PipelineResult",
     "RelativeStrengthConfig",
     "RelativeStrengthEngine",
     "RelativeStrengthError",
