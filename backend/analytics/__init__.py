@@ -16,6 +16,7 @@ from backend.analytics.momentum.exceptions import (
 from backend.analytics.momentum.models import MomentumConfig, MomentumState
 from backend.analytics.momentum.momentum_engine import MomentumEngine
 from backend.analytics.pipeline import AnalyticsPipeline, PipelineResult
+from backend.analytics.registry import AnalyticsRegistry
 from backend.analytics.relative_strength.exceptions import RelativeStrengthError
 from backend.analytics.relative_strength.models import (
     RelativeStrengthConfig,
@@ -38,6 +39,7 @@ __all__ = [
     "AnalyticsEngineBase",
     "AnalyticsFact",
     "AnalyticsPipeline",
+    "AnalyticsRegistry",
     "CorporateAction",
     "InsufficientDataError",
     "MarketBar",

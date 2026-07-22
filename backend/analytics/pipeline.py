@@ -1,9 +1,12 @@
 """
 Analytics Pipeline.
 
-Orchestrates multiple analytics engines in a configured order, collecting
-results and handling recoverable failures. Engines remain independent;
-the pipeline is the single orchestration point.
+Orchestrates multiple analytics engines via the :class:`AnalyticsRegistry`,
+collecting results and handling recoverable failures.  Engines remain
+independent; the pipeline is the single orchestration point.
+
+The pipeline does **not** import any specific engine — it works with any
+engine registered in the provided registry.
 """
 
 from __future__ import annotations
@@ -11,15 +14,11 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-from backend.analytics.base_engine import AnalyticsEngineBase
 from backend.analytics.models import AnalyticsContext, AnalyticsFact
-from backend.analytics.momentum.momentum_engine import MomentumEngine
-from backend.analytics.relative_strength.relative_strength_engine import (
-    RelativeStrengthEngine,
+from backend.analytics.registry import (
+    AnalyticsRegistry,
+    create_default_registry,
 )
-from backend.analytics.trend.trend_engine import TrendEngine
-from backend.analytics.volatility.volatility_engine import VolatilityEngine
-from backend.analytics.volume.volume_engine import VolumeEngine
 
 
 @dataclass(frozen=True)
@@ -48,10 +47,13 @@ class PipelineResult:
 class AnalyticsPipeline:
     """Single orchestration point for all analytics engines.
 
-    Engines are registered via dependency injection and executed in a
-    defined order.  Recoverable failures are captured per-engine so that
-    a single engine failure does not prevent the remaining engines from
-    running.
+    Engines are provided by an :class:`AnalyticsRegistry` and executed in
+    registration order.  Recoverable failures are captured per-engine so
+    that a single engine failure does not prevent the remaining engines
+    from running.
+
+    The pipeline is fully decoupled from specific engine implementations —
+    any engine registered in the registry will be executed.
 
     Example::
 
@@ -60,26 +62,21 @@ class AnalyticsPipeline:
         trend   = result.facts.get("Trend")
     """
 
-    DEFAULT_ENGINES: tuple[AnalyticsEngineBase, ...] = (
-        TrendEngine(),
-        MomentumEngine(),
-        VolumeEngine(),
-        RelativeStrengthEngine(),
-        VolatilityEngine(),
-    )
-
     def __init__(
         self,
-        engines: tuple[AnalyticsEngineBase, ...] | None = None,
+        registry: AnalyticsRegistry | None = None,
     ) -> None:
         """Initialize the pipeline.
 
         Args:
-            engines: Ordered sequence of engine instances.  If ``None`` the
-                     default set is used (Trend, Momentum, Volume, RS,
-                     Volatility).
+            registry: An :class:`AnalyticsRegistry` with engines to execute.
+                      If ``None`` a default registry with all standard
+                      engines (Trend, Momentum, Volume, RS, Volatility) is
+                      created automatically.
         """
-        self._engines = engines if engines is not None else self.DEFAULT_ENGINES
+        self._registry = (
+            registry if registry is not None else create_default_registry()
+        )
 
     def run(self, context: AnalyticsContext) -> PipelineResult:
         """Execute all registered engines against *context*.
@@ -99,7 +96,7 @@ class AnalyticsPipeline:
         times: dict[str, float] = {}
         start = time.perf_counter()
 
-        for engine in self._engines:
+        for engine in self._registry.ordered():
             engine_start = time.perf_counter()
             try:
                 fact = engine.analyze(context)
@@ -110,11 +107,9 @@ class AnalyticsPipeline:
 
         total = time.perf_counter() - start
 
-        order = tuple(e._engine_name() for e in self._engines)
-
         return PipelineResult(
             facts=facts,
-            execution_order=order,
+            execution_order=self._registry.list(),
             execution_times=times,
             errors=errors,
             total_duration=total,
