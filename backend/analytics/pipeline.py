@@ -13,8 +13,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from typing import Literal
 
+from backend.analytics.execution import (
+    ExecutionStrategy,
+    ParallelExecutionStrategy,
+    SequentialExecutionStrategy,
+)
 from backend.analytics.execution_report import (
     EngineExecutionResult,
     PipelineExecutionReport,
@@ -24,6 +29,11 @@ from backend.analytics.registry import (
     AnalyticsRegistry,
     create_default_registry,
 )
+
+_STRATEGY_MAP: dict[str, type[ExecutionStrategy]] = {
+    "sequential": SequentialExecutionStrategy,
+    "parallel": ParallelExecutionStrategy,
+}
 
 
 @dataclass(frozen=True)
@@ -74,18 +84,24 @@ class AnalyticsPipeline:
     def __init__(
         self,
         registry: AnalyticsRegistry | None = None,
+        execution_strategy: ExecutionStrategy
+        | Literal["sequential", "parallel"]
+        | None = None,
     ) -> None:
         """Initialize the pipeline.
 
         Args:
-            registry: An :class:`AnalyticsRegistry` with engines to execute.
-                      If ``None`` a default registry with all standard
-                      engines (Trend, Momentum, Volume, RS, Volatility) is
-                      created automatically.
+            registry:           An :class:`AnalyticsRegistry` with engines to
+                                execute.  If ``None`` a default registry with
+                                all standard engines is created automatically.
+            execution_strategy: Execution strategy instance or name.  Pass
+                                ``"parallel"`` to enable concurrent execution.
+                                Defaults to ``"sequential"``.
         """
         self._registry = (
             registry if registry is not None else create_default_registry()
         )
+        self._strategy = _resolve_strategy(execution_strategy)
 
     def run(self, context: AnalyticsContext) -> PipelineResult:
         """Execute all registered engines against *context*.
@@ -100,45 +116,35 @@ class AnalyticsPipeline:
         Returns:
             PipelineResult with facts, timing and error information.
         """
+        engines = self._registry.ordered()
+
+        start = time.perf_counter()
+        tasks = self._strategy.execute(engines, context)
+        total = time.perf_counter() - start
+
         facts: dict[str, AnalyticsFact] = {}
         errors: dict[str, str] = {}
         times: dict[str, float] = {}
         engine_reports: list[EngineExecutionResult] = []
-        start = time.perf_counter()
 
-        for engine in self._registry.ordered():
-            engine_start = time.perf_counter()
-            engine_started = datetime.now(UTC)
-            warnings: tuple[str, ...] = ()
-            exception_type: str | None = None
-            status: str = "SUCCESS"
-
-            try:
-                fact = engine.analyze(context)
-                facts[fact.name] = fact
-                warnings = tuple(fact.metadata.get("warnings", []))
-            except Exception as exc:
-                status = "FAILED"
-                errors[engine._engine_name()] = str(exc)
-                exception_type = f"{type(exc).__module__}.{type(exc).__qualname__}"
-
-            engine_finished = datetime.now(UTC)
-            duration_s = time.perf_counter() - engine_start
-            times[engine._engine_name()] = duration_s
+        for task in tasks:
+            if task.fact is not None:
+                facts[task.engine_name] = task.fact
+            if task.error is not None:
+                errors[task.engine_name] = task.error
+            times[task.engine_name] = task.duration_s
 
             engine_reports.append(
                 EngineExecutionResult(
-                    engine_name=engine._engine_name(),
-                    started_at=engine_started,
-                    finished_at=engine_finished,
-                    duration_ms=round(duration_s * 1000, 2),
-                    status=status,
-                    warnings=warnings,
-                    exception_type=exception_type,
+                    engine_name=task.engine_name,
+                    started_at=task.started_at,
+                    finished_at=task.finished_at,
+                    duration_ms=round(task.duration_s * 1000, 2),
+                    status="SUCCESS" if task.fact is not None else "FAILED",
+                    warnings=task.warnings,
+                    exception_type=task.exception_type,
                 )
             )
-
-        total = time.perf_counter() - start
 
         report = PipelineExecutionReport(
             engines=tuple(engine_reports),
@@ -157,3 +163,28 @@ class AnalyticsPipeline:
             failure_count=len(errors),
             report=report,
         )
+
+
+def _resolve_strategy(
+    strategy: ExecutionStrategy | str | None,
+) -> ExecutionStrategy:
+    """Resolve a strategy name or instance to an ExecutionStrategy.
+
+    Args:
+        strategy: Strategy instance, ``"sequential"``, ``"parallel"``, or
+                  ``None``.
+
+    Returns:
+        ExecutionStrategy instance.
+    """
+    if strategy is None or strategy == "sequential":
+        return SequentialExecutionStrategy()
+    if isinstance(strategy, str):
+        cls = _STRATEGY_MAP.get(strategy)
+        if cls is None:
+            raise ValueError(
+                f"Unknown execution strategy: {strategy!r}. "
+                f"Available: {list(_STRATEGY_MAP)}"
+            )
+        return cls()
+    return strategy

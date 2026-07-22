@@ -1,6 +1,11 @@
-"""Analytics platform shared models, base engine, pipeline, registry, execution report, and the trend/momentum/volume/RS/volatility engines."""
+"""Analytics platform shared models, base engine, pipeline, registry, execution report, strategies, and the trend/momentum/volume/RS/volatility engines."""
 
 from backend.analytics.base_engine import AnalyticsEngineBase
+from backend.analytics.execution import (
+    ExecutionStrategy,
+    ParallelExecutionStrategy,
+    SequentialExecutionStrategy,
+)
 from backend.analytics.execution_report import (
     EngineExecutionResult,
     PipelineExecutionReport,
@@ -46,8 +51,10 @@ __all__ = [
     "AnalyticsRegistry",
     "CorporateAction",
     "EngineExecutionResult",
+    "ExecutionStrategy",
     "InsufficientDataError",
     "MarketBar",
+    "ParallelExecutionStrategy",
     "PipelineExecutionReport",
     "MomentumConfig",
     "MomentumEngine",
@@ -55,6 +62,7 @@ __all__ = [
     "MomentumState",
     "PipelineResult",
     "RelativeStrengthConfig",
+    "SequentialExecutionStrategy",
     "RelativeStrengthEngine",
     "RelativeStrengthError",
     "RelativeStrengthState",
