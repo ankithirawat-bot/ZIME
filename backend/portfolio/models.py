@@ -10,6 +10,12 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
+from backend.core.constants import (
+    DEFAULT_INITIAL_CAPITAL,
+    DEFAULT_MAX_POSITIONS,
+    DEFAULT_MIN_POSITIONS,
+)
+
 
 class AllocationStrategy(StrEnum):
     """Allocation strategies."""
@@ -84,13 +90,13 @@ class PortfolioConfig:
         risk_free_rate:          Risk-free rate for Sharpe/Sortino calculations.
     """
 
-    initial_capital: float = 1_000_000.0
+    initial_capital: float = DEFAULT_INITIAL_CAPITAL
     allocation_strategy: AllocationStrategy = AllocationStrategy.EQUAL_WEIGHT
     rebalance_frequency: RebalanceFrequency = RebalanceFrequency.MONTHLY
     rebalance_threshold: float = 0.05
     drift_threshold: float = 0.03
-    max_positions: int = 50
-    min_positions: int = 5
+    max_positions: int = DEFAULT_MAX_POSITIONS
+    min_positions: int = DEFAULT_MIN_POSITIONS
     max_position_size: float = 0.20
     min_position_size: float = 0.02
     max_sector_exposure: float = 0.30

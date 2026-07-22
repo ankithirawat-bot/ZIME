@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+from backend.core.constants import DEFAULT_EXCHANGE
 from backend.fundamentals.exceptions import UnsupportedStatementTypeError
 from backend.fundamentals.models import (
     BalanceSheet,
@@ -65,7 +66,7 @@ class FundamentalNormalizer:
             raise UnsupportedStatementTypeError(resolved.value)
 
         symbol = payload.get("symbol")
-        exchange = payload.get("exchange", "NSE")
+        exchange = payload.get("exchange", DEFAULT_EXCHANGE)
         if not symbol:
             raise ValueError("Missing symbol in payload")
 

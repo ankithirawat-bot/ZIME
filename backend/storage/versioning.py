@@ -10,6 +10,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 
+from backend.core.constants import DATE_FORMAT_COMPACT
 from backend.storage.models import DatasetVersion
 
 
@@ -33,7 +34,7 @@ def generate_version(
         Version string.
     """
     ts = timestamp or datetime.now(UTC)
-    ts_str = ts.strftime("%Y%m%d%H%M%S")
+    ts_str = ts.strftime(DATE_FORMAT_COMPACT)
     return f"{provider}_{dataset_type}_{symbol}_{ts_str}"
 
 

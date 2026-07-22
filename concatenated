@@ -1,0 +1,1437 @@
+F401 `backend.optimization.models.ConstraintViolation` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> backend\optimization\__init__.py:27:5
+   |
+25 | from backend.optimization.models import (
+26 |     ConstraintType,
+27 |     ConstraintViolation,
+   |     ^^^^^^^^^^^^^^^^^^^
+28 |     EfficientFrontier,
+29 |     ObjectiveType,
+   |
+help: Add unused import `ConstraintViolation` to __all__
+
+F821 Undefined name `Any`
+   --> backend\optimization\allocation.py:230:30
+    |
+228 |     def intelligence_adjusted_allocation(
+229 |         request: OptimizationRequest,
+230 |         intelligence_engine: Any,  # IntelligenceEngine
+    |                              ^^^
+231 |     ) -> PortfolioSolution:
+232 |         """Intelligence-adjusted allocation.
+    |
+
+F821 Undefined name `Any`
+   --> backend\optimization\allocation.py:286:24
+    |
+284 |     def regime_adjusted_allocation(
+285 |         request: OptimizationRequest,
+286 |         regime_engine: Any,  # RegimeEngine
+    |                        ^^^
+287 |     ) -> PortfolioSolution:
+288 |         """Regime-adjusted allocation.
+    |
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:49:1
+   |
+47 |         weights = np.array(solution.weights)
+48 |         n = len(request.asset_names)
+49 |         
+   | ^^^^^^^^
+50 |         analytics = {
+51 |             # Basic portfolio metrics
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:59:1
+   |
+57 |             "var_95": solution.var_95,
+58 |             "cvar_95": solution.cvar_95,
+59 |             
+   | ^^^^^^^^^^^^
+60 |             # Diversification metrics
+61 |             "diversification_ratio": solution.diversification_ratio,
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:64:1
+   |
+62 |             "effective_number_of_positions": solution.effective_n,
+63 |             "herfindahl_index": solution.herfindahl_index,
+64 |             
+   | ^^^^^^^^^^^^
+65 |             # Weight statistics
+66 |             "weight_sum": np.sum(weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:70:1
+   |
+68 |             "weight_skewness": PortfolioAnalytics._calculate_skewness(weights),
+69 |             "weight_kurtosis": PortfolioAnalytics._calculate_kurtosis(weights),
+70 |             
+   | ^^^^^^^^^^^^
+71 |             # Concentration metrics
+72 |             "concentration_ratio": PortfolioAnalytics._calculate_concentration_ratio(weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:77:1
+   |
+75 |             "top_5_weight": PortfolioAnalytics._calculate_top_n_weight(weights, 5),
+76 |             "top_10_weight": PortfolioAnalytics._calculate_top_n_weight(weights, 10),
+77 |             
+   | ^^^^^^^^^^^^
+78 |             # Risk metrics
+79 |             "volatility_skewness": 0.0,  # Placeholder - would require returns data
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:82:1
+   |
+80 |             "volatility_kurtosis": 0.0,  # Placeholder
+81 |             "tail_ratio": 0.0,  # Placeholder
+82 |             
+   | ^^^^^^^^^^^^
+83 |             # Factor exposure (if available)
+84 |             "factor_exposure": PortfolioAnalytics._calculate_factor_exposure(request, weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:85:1
+   |
+83 |             # Factor exposure (if available)
+84 |             "factor_exposure": PortfolioAnalytics._calculate_factor_exposure(request, weights),
+85 |             
+   | ^^^^^^^^^^^^
+86 |             # Sector exposure (if available)
+87 |             "sector_exposure": PortfolioAnalytics._calculate_sector_exposure(request, weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:88:1
+   |
+86 |             # Sector exposure (if available)
+87 |             "sector_exposure": PortfolioAnalytics._calculate_sector_exposure(request, weights),
+88 |             
+   | ^^^^^^^^^^^^
+89 |             # Industry exposure (if available)
+90 |             "industry_exposure": PortfolioAnalytics._calculate_industry_exposure(request, weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:91:1
+   |
+89 |             # Industry exposure (if available)
+90 |             "industry_exposure": PortfolioAnalytics._calculate_industry_exposure(request, weights),
+91 |             
+   | ^^^^^^^^^^^^
+92 |             # Liquidity metrics (if volume data available)
+93 |             "liquidity_score": PortfolioAnalytics._calculate_liquidity_score(request, weights),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:94:1
+   |
+92 |             # Liquidity metrics (if volume data available)
+93 |             "liquidity_score": PortfolioAnalytics._calculate_liquidity_score(request, weights),
+94 |             
+   | ^^^^^^^^^^^^
+95 |             # Turnover metrics
+96 |             "annualized_turnover": solution.turnover * 252,  # Approximate annual turnover
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\optimization\analytics.py:97:1
+   |
+95 |             # Turnover metrics
+96 |             "annualized_turnover": solution.turnover * 252,  # Approximate annual turnover
+97 |             
+   | ^^^^^^^^^^^^
+98 |             # Efficiency metrics
+99 |             "return_to_volatility_ratio": solution.expected_return / max(solution.expected_volatility, EPSILON),
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:102:1
+    |
+100 |             "return_to_drawdown_ratio": solution.expected_return / max(solution.max_drawdown, EPSILON),
+101 |         }
+102 |         
+    | ^^^^^^^^
+103 |         return analytics
+    |
+help: Remove whitespace from blank line
+
+UP034 Avoid extraneous parentheses
+   --> backend\optimization\analytics.py:150:28
+    |
+148 |         if sum_weights < EPSILON:
+149 |             return 0.0
+150 |         gini = (2 * np.sum((np.arange(1, n+1) * sorted_weights)) - (n+1) * sum_weights) / (n * sum_weights)
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+151 |         return max(0.0, min(1.0, gini))
+    |
+help: Remove extraneous parentheses
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:191:1
+    |
+189 |         if request.factor_exposures is None or len(request.asset_names) == 0:
+190 |             return {}
+191 |         
+    | ^^^^^^^^
+192 |         # Factor exposure matrix: assets x factors
+193 |         # weights: assets x 1
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:199:1
+    |
+197 |             if len(factor_matrix.shape) != 2 or factor_matrix.shape[0] != len(request.asset_names):
+198 |                 return {}
+199 |             
+    | ^^^^^^^^^^^^
+200 |             portfolio_exposure = np.dot(weights, factor_matrix)
+201 |             factor_names = [f"factor_{i}" for i in range(factor_matrix.shape[1])]
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:222:1
+    |
+220 |         if request.sector_map is None:
+221 |             return {}
+222 |         
+    | ^^^^^^^^
+223 |         sector_exposure: dict[str, float] = {}
+224 |         for i, asset in enumerate(request.asset_names):
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:228:1
+    |
+226 |             if sector is not None:
+227 |                 sector_exposure[sector] = sector_exposure.get(sector, 0.0) + weights[i]
+228 |         
+    | ^^^^^^^^
+229 |         return sector_exposure
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:247:1
+    |
+245 |         if request.industry_map is None:
+246 |             return {}
+247 |         
+    | ^^^^^^^^
+248 |         industry_exposure: dict[str, float] = {}
+249 |         for i, asset in enumerate(request.asset_names):
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:253:1
+    |
+251 |             if industry is not None:
+252 |                 industry_exposure[industry] = industry_exposure.get(industry, 0.0) + weights[i]
+253 |         
+    | ^^^^^^^^
+254 |         return industry_exposure
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:272:1
+    |
+270 |         if request.volumes is None or len(request.volumes) == 0:
+271 |             return 0.0
+272 |         
+    | ^^^^^^^^
+273 |         # Normalize volumes to get liquidity scores
+274 |         volumes = np.array(request.volumes)
+    |
+help: Remove whitespace from blank line
+
+invalid-syntax: Expected `:`, found newline
+   --> backend\optimization\analytics.py:276:40
+    |
+274 |         volumes = np.array(request.volumes)
+275 |         avg_volume = np.mean(volumes)
+276 |         if avg_volume < EPSILONint(0.0)
+    |                                        ^
+277 |         
+278 |         # Liquidity score = volume / avg_volume (higher = more liquid)
+    |
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:277:1
+    |
+275 |         avg_volume = np.mean(volumes)
+276 |         if avg_volume < EPSILONint(0.0)
+277 |         
+    | ^^^^^^^^
+278 |         # Liquidity score = volume / avg_volume (higher = more liquid)
+279 |         liquidity_scores = volumes / avg_volume
+    |
+help: Remove whitespace from blank line
+
+invalid-syntax: Expected an indented block after `if` statement
+   --> backend\optimization\analytics.py:279:9
+    |
+278 |         # Liquidity score = volume / avg_volume (higher = more liquid)
+279 |         liquidity_scores = volumes / avg_volume
+    |         ^^^^^^^^^^^^^^^^
+280 |         # Cap extreme values to avoid outliers
+281 |         liquidity_scores = np.clip(liquidity_scores, 0.0, 10.0)
+    |
+
+W293 Blank line contains whitespace
+   --> backend\optimization\analytics.py:282:1
+    |
+280 |         # Cap extreme values to avoid outliers
+281 |         liquidity_scores = np.clip(liquidity_scores, 0.0, 10.0)
+282 |         
+    | ^^^^^^^^
+283 |         # Weighted average
+284 |         return np.dot(weights, liquidity_scores)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:132:1
+    |
+130 |                 optimizer_func = OptimizerFactory.create_optimizer(solver_name)
+131 |                 result = optimizer_func(request, objective_type, self._config)
+132 |                 
+    | ^^^^^^^^^^^^^^^^
+133 |                 # Validate the result satisfies constraints
+134 |                 is_valid, violations = Constraints.validate_weights(result.optimal_weights, request)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:137:1
+    |
+135 |                 if not is_valid:
+136 |                     raise OptimizationSolverError(solver_name, f"Solution violates constraints: {[str(v) for v in violations]}")
+137 |                 
+    | ^^^^^^^^^^^^^^^^
+138 |                 # Update statistics
+139 |                 solve_time = time.time() - start_time
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:144:1
+    |
+142 |                 self._stats["total_iterations"] += result.iterations
+143 |                 self._stats["solver_usage"][solver_name] = self._stats["solver_usage"].get(solver_name, 0) + 1
+144 |                 
+    | ^^^^^^^^^^^^^^^^
+145 |                 return result
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:146:1
+    |
+145 |                 return result
+146 |                 
+    | ^^^^^^^^^^^^^^^^
+147 |             except (InfeasiblePortfolioOptimizationError, OptimizationSolverError, OptimizationTimeoutError) as e:
+148 |                 last_error = e
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:183:1
+    |
+181 |         """
+182 |         start_time = time.time()
+183 |         
+    | ^^^^^^^^
+184 |         try:
+185 |             frontier = FrontierGenerator.generate_frontier(
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:188:1
+    |
+186 |                 self, request, num_points, min_return, max_return
+187 |             )
+188 |             
+    | ^^^^^^^^^^^^
+189 |             # Update statistics
+190 |             solve_time = time.time() - start_time
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:193:1
+    |
+191 |             self._stats["total_solve_time"] += solve_time
+192 |             self._stats["success_count"] += 1
+193 |             
+    | ^^^^^^^^^^^^
+194 |             return frontier
+195 |         except Exception as e:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:218:1
+    |
+216 |         if request.current_weights is None:
+217 |             raise OptimizationError("Current weights required for rebalancing")
+218 |         
+    | ^^^^^^^^
+219 |         # Get target portfolio
+220 |         target_result = self.optimize(request, objective_type)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:241:1
+    |
+239 |             }
+240 |         )
+241 |         
+    | ^^^^^^^^
+242 |         # Calculate rebalancing trades
+243 |         current_weights = np.array(request.current_weights)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:245:1
+    |
+243 |         current_weights = np.array(request.current_weights)
+244 |         target_weights = np.array(target_solution.weights)
+245 |         
+    | ^^^^^^^^
+246 |         # Calculate trades needed
+247 |         weight_diffs = target_weights - current_weights
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:250:1
+    |
+248 |         abs_weight_diffs = np.abs(weight_diffs)
+249 |         total_turnover = np.sum(abs_weight_diffs)
+250 |         
+    | ^^^^^^^^
+251 |         # Identify buy/sell actions
+252 |         buys = {}
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:260:1
+    |
+258 |             elif diff < -tolerance:
+259 |                 sells[asset] = -diff
+260 |         
+    | ^^^^^^^^
+261 |         rebalancing_info = {
+262 |             "current_weights": dict(zip(request.asset_names, current_weights.tolist())),
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:271:1
+    |
+269 |             "num_assets_to_sell": len(sells),
+270 |         }
+271 |         
+    | ^^^^^^^^
+272 |         return target_solution, rebalancing_info
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:289:1
+    |
+287 |         """
+288 |         start_time = time.time()
+289 |         
+    | ^^^^^^^^
+290 |         # Validate weights
+291 |         is_valid, violations = Constraints.validate_weights(weights, request)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:292:1
+    |
+290 |         # Validate weights
+291 |         is_valid, violations = Constraints.validate_weights(weights, request)
+292 |         
+    | ^^^^^^^^
+293 |         # Calculate portfolio metrics
+294 |         if len(weights) == len(request.asset_names):
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:303:1
+    |
+301 |             herfindahl = _calculate_herfindahl_index(request, weights)
+302 |             turnover = _calculate_turnover(request, weights)
+303 |             
+    | ^^^^^^^^^^^^
+304 |             # Use default objective for evaluation (could make this configurable)
+305 |             objective_result = self._evaluate_objective(request, weights, self._config.objective)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:306:1
+    |
+304 |             # Use default objective for evaluation (could make this configurable)
+305 |             objective_result = self._evaluate_objective(request, weights, self._config.objective)
+306 |             
+    | ^^^^^^^^^^^^
+307 |             result = OptimizationResult(
+308 |                 optimal_weights=weights,
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:349:1
+    |
+347 |                 message=f"Weight count mismatch: expected {len(request.asset_names)}, got {len(weights)}",
+348 |             )
+349 |         
+    | ^^^^^^^^
+350 |         return result, violations
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:367:1
+    |
+365 |         """
+366 |         context = context or {}
+367 |         
+    | ^^^^^^^^
+368 |         # Get recommended portfolio using default objective
+369 |         result = self.optimize(request, self._config.objective)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:370:1
+    |
+368 |         # Get recommended portfolio using default objective
+369 |         result = self.optimize(request, self._config.objective)
+370 |         
+    | ^^^^^^^^
+371 |         # Create portfolio solution
+372 |         solution = PortfolioSolution(
+    |
+help: Remove whitespace from blank line
+
+invalid-syntax: Expected `else`, found name
+   --> backend\optimization\engine.py:388:72
+    |
+386 | …         constraint_violations=tuple(),  # Would need to get from validate_weights
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+    |                                                                      ^^^
+389 | …                     if if object (self this attribute't the for to
+390 | …     }
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:76
+    |
+386 | …         constraint_violations=tuple(),  # Would need to get from validate_weights
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+    |                                                                          ^^^^
+389 | …                     if if object (self this attribute't the for to
+390 | …     }
+    |
+
+invalid-syntax: Expected `:`, found `not`
+   --> backend\optimization\engine.py:388:99
+    |
+386 | …         constraint_violations=tuple(),  # Would need to get from validate_weights
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+    |                                                                                                 ^^^
+389 | …                     if if object (self this attribute't the for to
+390 | …     }
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:106
+    |
+386 | …         constraint_violations=tuple(),  # Would need to get from validate_weights
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+    |                                                                                                        ^^^^
+389 | …                     if if object (self this attribute't the for to
+390 | …     }
+    |
+
+invalid-syntax: Expected `:`, found name
+   --> backend\optimization\engine.py:388:120
+    |
+386 | …         constraint_violations=tuple(),  # Would need to get from validate_weights
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+    |                                                                                                                      ^^^
+389 | …                     if if object (self this attribute't the for to
+390 | …     }
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:124
+    |
+386 | …et from validate_weights
+387 | …
+388 | …sinstance the self._config.objective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                                ^^^^^^^^
+389 | …he for to
+390 | …
+    |
+
+invalid-syntax: Expected `:`, found name
+   --> backend\optimization\engine.py:388:133
+    |
+386 | …lidate_weights
+387 | …
+388 | …the self._config.objective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                               ^^^^^^^^^^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:144
+    |
+386 | …eights
+387 | …
+388 | …._config.objective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                                  ^^^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected `:`, found name
+   --> backend\optimization\engine.py:388:148
+    |
+386 | …hts
+387 | …
+388 | …onfig.objective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                                   ^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:150
+    |
+386 | …
+387 | …
+388 | …ig.objective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                                  ^^^^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected `:`, found name
+   --> backend\optimization\engine.py:388:155
+    |
+386 | …
+387 | …
+388 | …bjective not be self.objected his value_if isinstance the E this to attribution():
+    |                                                                   ^^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:388:158
+    |
+386 | …
+387 | …
+388 | … not be self.objected his value_if isinstance the E this to attribution():
+    |                                                              ^^^^^^^^^^^
+389 | …
+390 | …
+    |
+
+invalid-syntax: Expected an identifier, but found a keyword `if` that cannot be used here
+   --> backend\optimization\engine.py:389:25
+    |
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+389 | …                     if if object (self this attribute't the for to
+    |                       ^^
+390 | …     }
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:389:44
+    |
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+389 | …                     if if object (self this attribute't the for to
+    |                                          ^^^^
+390 | …     }
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:389:49
+    |
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+389 | …                     if if object (self this attribute't the for to
+    |                                               ^^^^^^^^^
+390 | …     }
+    |
+
+invalid-syntax: missing closing quote in string literal
+   --> backend\optimization\engine.py:389:58
+    |
+387 | …         solution_details={
+388 | …             "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if isi…
+389 | …                     if if object (self this attribute't the for to
+    |                                                        ^^^^^^^^^^^^^
+390 | …     }
+    |
+
+invalid-syntax: Expected `)`, found `}`
+   --> backend\optimization\engine.py:390:9
+    |
+388 |                 "objective": self._config.objective_type if isinstance the self._config.objective not be self.objected his value_if i…
+389 |                         if if object (self this attribute't the for to
+390 |         }
+    |         ^
+391 |
+392 |         # Get analytics
+    |
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:393:9
+    |
+392 |         # Get analytics
+393 |         analytics = PortfolioAnalytics.calculate_analytics(request, solution)
+    |         ^^^^^^^^^
+394 |         
+395 |         # Generate explanation
+    |
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:394:1
+    |
+392 |         # Get analytics
+393 |         analytics = PortfolioAnalytics.calculate_analytics(request, solution)
+394 |         
+    | ^^^^^^^^
+395 |         # Generate explanation
+396 |         explanation = self._generate_explanation(request, solution, context)
+    |
+help: Remove whitespace from blank line
+
+invalid-syntax: Expected `,`, found name
+   --> backend\optimization\engine.py:396:9
+    |
+395 |         # Generate explanation
+396 |         explanation = self._generate_explanation(request, solution, context)
+    |         ^^^^^^^^^^^
+397 |         
+398 |         return {
+    |
+
+invalid-syntax: Expected `)`, found newline
+   --> backend\optimization\engine.py:396:77
+    |
+395 |         # Generate explanation
+396 |         explanation = self._generate_explanation(request, solution, context)
+    |                                                                             ^
+397 |         
+398 |         return {
+    |
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:397:1
+    |
+395 |         # Generate explanation
+396 |         explanation = self._generate_explanation(request, solution, context)
+397 |         
+    | ^^^^^^^^
+398 |         return {
+399 |             "portfolio": solution,
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:424:1
+    |
+422 |         if n < 2:
+423 |             raise InsufficientAssetsError(n, 2)
+424 |         
+    | ^^^^^^^^
+425 |         # Check expected returns length
+426 |         if len(request.expected_returns) != n:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:428:1
+    |
+426 |         if len(request.expected_returns) != n:
+427 |             raise ValueError(f"Expected returns length {len(request.expected_returns)} does not match number of assets {n}")
+428 |         
+    | ^^^^^^^^
+429 |         # Check covariance matrix dimensions
+430 |         cov_matrix = np.array(request.covariance_matrix)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:433:1
+    |
+431 |         if cov_matrix.shape != (n, n):
+432 |             raise ValueError(f"Covariance matrix shape {cov_matrix.shape} does not match ({n}, {n})")
+433 |         
+    | ^^^^^^^^
+434 |         # Check if covariance matrix is valid (symmetric, positive semi-definite)
+435 |         if not np.allclose(cov_matrix, cov_matrix.T):
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:437:1
+    |
+435 |         if not np.allclose(cov_matrix, cov_matrix.T):
+436 |             raise ValueError("Covariance matrix is not symmetric")
+437 |         
+    | ^^^^^^^^
+438 |         # Check eigenvalues for positive semi-definiteness
+439 |         try:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:445:1
+    |
+443 |         except np.linalg.LinAlgError:
+444 |             raise ValueError("Cannot compute eigenvalues of covariance matrix")
+445 |         
+    | ^^^^^^^^
+446 |         # Check current weights if provided
+447 |         if request.current_weights is not None:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:450:1
+    |
+448 |             if len(request.current_weights) != n:
+449 |                 raise ValueError(f"Current weights length {len(request.current_weights)} does not match number of assets {n}")
+450 |         
+    | ^^^^^^^^
+451 |         # Check views if provided (for Black-Litterman)
+452 |         if request.views is not None:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:455:1
+    |
+453 |             if len(request.views) != n:
+454 |                 raise ValueError(f"Views length {len(request.views)} does not match number of assets {n}")
+455 |         
+    | ^^^^^^^^
+456 |         # Check confidences if provided
+457 |         if request.confidences is not None:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:573:1
+    |
+571 |         """
+572 |         constraints = []
+573 |         
+    | ^^^^^^^^
+574 |         # Check which constraints have non-default values
+575 |         if hasattr(self._config, 'max_weight_per_asset') and self._config.max_weight_per_asset < 1.0:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:577:1
+    |
+575 |         if hasattr(self._config, 'max_weight_per_asset') and self._config.max_weight_per_asset < 1.0:
+576 |             constraints.append(f"Max weight per asset: {self._config.max_weight_per_asset}")
+577 |         
+    | ^^^^^^^^
+578 |         if hasattr(self._config, 'min_weight_per_asset') and self._config.min_weight_per_asset > 0.0:
+579 |             constraints.append(f"Min weight per asset: {self._config.min_weight_per_asset}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:580:1
+    |
+578 |         if hasattr(self._config, 'min_weight_per_asset') and self._config.min_weight_per_asset > 0.0:
+579 |             constraints.append(f"Min weight per asset: {self._config.min_weight_per_asset}")
+580 |         
+    | ^^^^^^^^
+581 |         if getattr(self._config, 'sector_limits', None):
+582 |             constraints.append(f"Sector limits: {len(self._config.sector_limits)} sectors")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:583:1
+    |
+581 |         if getattr(self._config, 'sector_limits', None):
+582 |             constraints.append(f"Sector limits: {len(self._config.sector_limits)} sectors")
+583 |         
+    | ^^^^^^^^
+584 |         if getattr(self._config, 'industry_limits', None):
+585 |             constraints.append(f"Industry limits: {len(self._config.industry_limits)} industries")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:586:1
+    |
+584 |         if getattr(self._config, 'industry_limits', None):
+585 |             constraints.append(f"Industry limits: {len(self._config.industry_limits)} industries")
+586 |         
+    | ^^^^^^^^
+587 |         if hasattr(self._config, 'max_turnover') and self._config.max_turnover < 1.0:
+588 |             constraints.append(f"Max turnover: {self._config.max_turnover}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:589:1
+    |
+587 |         if hasattr(self._config, 'max_turnover') and self._config.max_turnover < 1.0:
+588 |             constraints.append(f"Max turnover: {self._config.max_turnover}")
+589 |         
+    | ^^^^^^^^
+590 |         if hasattr(self._config, 'max_volatility') and self._config.max_volatility < 1.0:
+591 |             constraints.append(f"Max volatility: {self._config.max_volatility}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:592:1
+    |
+590 |         if hasattr(self._config, 'max_volatility') and self._config.max_volatility < 1.0:
+591 |             constraints.append(f"Max volatility: {self._config.max_volatility}")
+592 |         
+    | ^^^^^^^^
+593 |         if hasattr(self._config, 'max_var') and self._config.max_var < 1.0:
+594 |             constraints.append(f"Max VaR: {self._config.max_var}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:595:1
+    |
+593 |         if hasattr(self._config, 'max_var') and self._config.max_var < 1.0:
+594 |             constraints.append(f"Max VaR: {self._config.max_var}")
+595 |         
+    | ^^^^^^^^
+596 |         if hasattr(self._config, 'max_drawdown') and self._config.max_drawdown < 1.0:
+597 |             constraints.append(f"Max drawdown: {self._config.max_drawdown}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:598:1
+    |
+596 |         if hasattr(self._config, 'max_drawdown') and self._config.max_drawdown < 1.0:
+597 |             constraints.append(f"Max drawdown: {self._config.max_drawdown}")
+598 |         
+    | ^^^^^^^^
+599 |         if hasattr(self._config, 'min_liquidity') and self._config.min_liquidity > 0.0:
+600 |             constraints.append(f"Min liquidity: {self._config.min_liquidity}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:601:1
+    |
+599 |         if hasattr(self._config, 'min_liquidity') and self._config.min_liquidity > 0.0:
+600 |             constraints.append(f"Min liquidity: {self._config.min_liquidity}")
+601 |         
+    | ^^^^^^^^
+602 |         if hasattr(self._config, 'max_concentration') and self._config.max_concentration < 1.0:
+603 |             constraints.append(f"Max concentration: {self._config.max_concentration}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:604:1
+    |
+602 |         if hasattr(self._config, 'max_concentration') and self._config.max_concentration < 1.0:
+603 |             constraints.append(f"Max concentration: {self._config.max_concentration}")
+604 |         
+    | ^^^^^^^^
+605 |         if hasattr(self._config, 'cardinality') and self._config.cardinality < len(request.asset_names):
+606 |             constraints.append(f"Cardinality limit: {self._config.cardinality}")
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:607:1
+    |
+605 |         if hasattr(self._config, 'cardinality') and self._config.cardinality < len(request.asset_names):
+606 |             constraints.append(f"Cardinality limit: {self._config.cardinality}")
+607 |         
+    | ^^^^^^^^
+608 |         return constraints
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:627:1
+    |
+625 |         """
+626 |         context = context or {}
+627 |         
+    | ^^^^^^^^
+628 |         explanation = {
+629 |             "objective_used": self._config.objective.value,
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:637:1
+    |
+635 |             "constraints_summary": self._get_applicable_constraints(request),
+636 |         }
+637 |         
+    | ^^^^^^^^
+638 |         # Add context-specific explanations if available
+639 |         if context.get("regime"):
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:641:1
+    |
+639 |         if context.get("regime"):
+640 |             explanation["regime_context"] = f"Optimized for {context['regime']} market conditions"
+641 |         
+    | ^^^^^^^^
+642 |         if context.get("intelligence_signal"):
+643 |             explanation["intelligence_context"] = f"Adjusted based on intelligence signals: {context['intelligence_signal']}"
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:644:1
+    |
+642 |         if context.get("intelligence_signal"):
+643 |             explanation["intelligence_context"] = f"Adjusted based on intelligence signals: {context['intelligence_signal']}"
+644 |         
+    | ^^^^^^^^
+645 |         return explanation
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:676:1
+    |
+674 |         # Sort by weight descending
+675 |         weighted_indices.sort(reverse=True)
+676 |         
+    | ^^^^^^^^
+677 |         # Get top 5 holdings
+678 |         top_holdings = []
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:685:1
+    |
+683 |                 "weight_percentage": weight * 100.0,
+684 |             })
+685 |         
+    | ^^^^^^^^
+686 |         return top_holdings
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:699:1
+    |
+697 |         vol = solution.expected_volatility
+698 |         max_dd = solution.max_drawdown
+699 |         
+    | ^^^^^^^^
+700 |         risk_level = "Low"
+701 |         if vol > 0.25:  # 25% annual volatility
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:705:1
+    |
+703 |         elif vol > 0.15:  # 15% annual volatility
+704 |             risk_level = "Medium"
+705 |         
+    | ^^^^^^^^
+706 |         return {
+707 |             "volatility": vol,
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:725:1
+    |
+723 |         herfindahl = solution.herfindahl_index
+724 |         div_ratio = solution.diversification_ratio
+725 |         
+    | ^^^^^^^^
+726 |         diversification_level = "Low"
+727 |         if eff_n > 10:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:731:1
+    |
+729 |         elif eff_n > 5:
+730 |             diversification_level = "Medium"
+731 |         
+    | ^^^^^^^^
+732 |         return {
+733 |             "effective_number_of_positions": eff_n,
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:750:1
+    |
+748 |         """
+749 |         symbols = []
+750 |         
+    | ^^^^^^^^
+751 |         # Based on concentration
+752 |         if solution.herfindahl_index < 0.1:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:758:1
+    |
+756 |         else:
+757 |             symbols.append("HIGHLY_CONCENTRATED")
+758 |         
+    | ^^^^^^^^
+759 |         # Based on turnover
+760 |         if solution.turnover < 0.1:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:766:1
+    |
+764 |         else:
+765 |             symbols.append("HIGH_TURNOVER")
+766 |         
+    | ^^^^^^^^
+767 |         # Based on Sharpe ratio
+768 |         if solution.sharpe_ratio > 1.5:
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\optimization\engine.py:774:1
+    |
+772 |         else:
+773 |             symbols.append("LOW_SHARPE")
+774 |         
+    | ^^^^^^^^
+775 |         return symbols
+    |
+help: Remove whitespace from blank line
+
+W292 No newline at end of file
+   --> backend\optimization\engine.py:775:23
+    |
+773 |             symbols.append("LOW_SHARPE")
+774 |         
+775 |         return symbols
+    |                       ^
+    |
+help: Add trailing newline
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> backend\optimization\frontier.py:7:1
+   |
+ 5 |   """
+ 6 |
+ 7 | / from __future__ import annotations
+ 8 | |
+ 9 | | import math
+10 | | from typing import Tuple, List, Optional, Any
+11 | |
+12 | | import numpy as np
+13 | |
+14 | | from backend.optimization.engine import OptimizationEngine
+15 | | from backend.optimization.models import (
+16 | |     OptimizationRequest,
+17 | |     OptimizationResult,
+18 | |     EfficientFrontier,
+19 | |     PortfolioSolution,
+20 | |     ObjectiveType,
+21 | | )
+22 | | from backend.optimization.exceptions import InsufficientDataError
+   | |_________________________________________________________________^
+   |
+help: Organize imports
+
+F401 [*] `math` imported but unused
+  --> backend\optimization\frontier.py:9:8
+   |
+ 7 | from __future__ import annotations
+ 8 |
+ 9 | import math
+   |        ^^^^
+10 | from typing import Tuple, List, Optional, Any
+   |
+help: Remove unused import: `math`
+
+UP035 `typing.Tuple` is deprecated, use `tuple` instead
+  --> backend\optimization\frontier.py:10:1
+   |
+ 9 | import math
+10 | from typing import Tuple, List, Optional, Any
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+11 |
+12 | import numpy as np
+   |
+
+UP035 `typing.List` is deprecated, use `list` instead
+  --> backend\optimization\frontier.py:10:1
+   |
+ 9 | import math
+10 | from typing import Tuple, List, Optional, Any
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+11 |
+12 | import numpy as np
+   |
+
+F401 [*] `typing.Optional` imported but unused
+  --> backend\optimization\frontier.py:10:33
+   |
+ 9 | import math
+10 | from typing import Tuple, List, Optional, Any
+   |                                 ^^^^^^^^
+11 |
+12 | import numpy as np
+   |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+  --> backend\optimization\frontier.py:10:43
+   |
+ 9 | import math
+10 | from typing import Tuple, List, Optional, Any
+   |                                           ^^^
+11 |
+12 | import numpy as np
+   |
+help: Remove unused import
+
+F401 [*] `backend.optimization.models.OptimizationResult` imported but unused
+  --> backend\optimization\frontier.py:17:5
+   |
+15 | from backend.optimization.models import (
+16 |     OptimizationRequest,
+17 |     OptimizationResult,
+   |     ^^^^^^^^^^^^^^^^^^
+18 |     EfficientFrontier,
+19 |     PortfolioSolution,
+   |
+help: Remove unused import: `backend.optimization.models.OptimizationResult`
+
+UP006 [*] Use `list` instead of `List` for type annotation
+  --> backend\optimization\frontier.py:73:23
+   |
+71 |         sharpes_list: list[float] = []
+72 |         sortinos_list: list[float] = []
+73 |         weights_list: List[tuple[float, ...]] = []
+   |                       ^^^^
+74 |         solutions_list: List[PortfolioSolution] = []
+   |
+help: Replace with `list`
+
+UP006 [*] Use `list` instead of `List` for type annotation
+  --> backend\optimization\frontier.py:74:25
+   |
+72 |         sortinos_list: list[float] = []
+73 |         weights_list: List[tuple[float, ...]] = []
+74 |         solutions_list: List[PortfolioSolution] = []
+   |                         ^^^^
+75 |
+76 |         # Optimize for each target return
+   |
+help: Replace with `list`
+
+F841 Local variable `tangency_result` is assigned to but never used
+   --> backend\optimization\frontier.py:152:17
+    |
+151 |                 # Get the tangency portfolio (max Sharpe)
+152 |                 tangency_result = engine.optimize(
+    |                 ^^^^^^^^^^^^^^^
+153 |                     request,
+154 |                     objective_type="max_sharpe"
+    |
+help: Remove assignment to unused variable `tangency_result`
+
+F841 Local variable `result` is assigned to but never used
+   --> backend\optimization\frontier.py:178:25
+    |
+176 |                     if abs(target_return - min_ret_val) < 1e-8:
+177 |                         # Use min variance portfolio (lowest risk for this return)
+178 |                         result = min_var_result
+    |                         ^^^^^^
+179 |                     else:
+180 |                         # Can't achieve this return
+    |
+help: Remove assignment to unused variable `result`
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> backend\optimization\frontier.py:201:21
+    |
+199 |                       # Create portfolio solution from these weights
+200 |                       # We'll calculate the metrics for this weight vector
+201 | /                     from backend.optimization.optimizers import (
+202 | |                         _calculate_portfolio_metrics,
+203 | |                         _calculate_max_drawdown,
+204 | |                         _calculate_var,
+205 | |                         _calculate_cvar,
+206 | |                         _calculate_diversification_ratio,
+207 | |                         _calculate_effective_n,
+208 | |                         _calculate_herfindahl_index,
+209 | |                         _calculate_turnover
+210 | |                     )
+    | |_____________________^
+211 |
+212 |                       port_return, port_vol, sharpe, sortino = _calculate_portfolio_metrics(
+    |
+help: Organize imports
+
+F841 Local variable `obj_result` is assigned to but never used
+   --> backend\optimization\frontier.py:218:21
+    |
+216 |                     # Create a mock result object for the objective value
+217 |                     # We'll use the max_sharpe objective value as placeholder
+218 |                     obj_result = ObjectiveResult(
+    |                     ^^^^^^^^^^
+219 |                         objective_type=ObjectiveType.MAX_SHARPE,
+220 |                         value=0.0,  # Placeholder
+    |
+help: Remove assignment to unused variable `obj_result`
+
+F821 Undefined name `ObjectiveResult`
+   --> backend\optimization\frontier.py:218:34
+    |
+216 |                     # Create a mock result object for the objective value
+217 |                     # We'll use the max_sharpe objective value as placeholder
+218 |                     obj_result = ObjectiveResult(
+    |                                  ^^^^^^^^^^^^^^^
+219 |                         objective_type=ObjectiveType.MAX_SHARPE,
+220 |                         value=0.0,  # Placeholder
+    |
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> backend\optimization\frontier.py:249:33
+    |
+247 |                     solutions_list.append(solution)
+248 |
+249 |             except Exception as e:
+    |                                 ^
+250 |                 # Skip this point if optimization fails
+251 |                 continue
+    |
+help: Remove assignment to unused variable `e`
+
+F841 Local variable `equal_weights` is assigned to but never used
+   --> backend\optimization\frontier.py:269:17
+    |
+267 |                 # Ultimate fallback: equal weights
+268 |                 n = len(request.asset_names)
+269 |                 equal_weights = tuple([1.0 / n] * n)
+    |                 ^^^^^^^^^^^^^
+270 |                 # Calculate metrics for equal weights
+271 |                 from backend.optimization.optimizers import (
+    |
+help: Remove assignment to unused variable `equal_weights`
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> backend\optimization\frontier.py:271:17
+    |
+269 |                   equal_weights = tuple([1.0 / n] * n)
+270 |                   # Calculate metrics for equal weights
+271 | /                 from backend.optimization.optimizers import (
+272 | |                     _calculate_portfolio_metrics,
+273 | |                     _calculate_max_drawdown,
+274 | |                     _calculate_var,
+275 | |                     _calculate_cvar,
+276 | |                     _calculate_diversification_ratio,
+277 | |                     _calculate_effective_n,
+278 | |                     _calculate_herfindahl_index,
+279 | |                     _calculate_turnover
+280 | |                 )
+    | |_________________^
+281 |                   # This is getting too complex - let's simplify
+    |
+help: Organize imports
+
+UP006 [*] Use `tuple` instead of `Tuple` for type annotation
+   --> backend\optimization\frontier.py:304:61
+    |
+303 |     @staticmethod
+304 |     def _get_return_bounds(request: OptimizationRequest) -> Tuple[float, float]:
+    |                                                             ^^^^^
+305 |         """Calculate minimum and maximum possible returns.
+    |
+help: Replace with `tuple`
+
+invalid-syntax: Expected an indented block after `if` statement
+   --> backend\optimization\optimizers.py:468:50
+    |
+466 |                             weights[i] = orig_w
+467 |                             weight_sum = np.sum(weights)
+468 |                             if weight_sum == 1.0:
+    |                                                  ^
+469 |                         weights = weights / weight_sum
+470 |                     except Exception:
+    |
+
+Found 122 errors.
+[*] 11 fixable with the `--fix` option (4 hidden fixes can be enabled with the `--unsafe-fixes` option).

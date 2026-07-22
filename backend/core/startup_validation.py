@@ -200,12 +200,51 @@ def _check_app_metadata() -> ValidationResult:
         )
 
 
+def _check_config_values() -> ValidationResult:
+    """Validate configuration values using :mod:`config_validation`."""
+    from backend.core.config_validation import (
+        DEFAULT_CONFIG_FIELDS,
+        validate_config,
+    )
+
+    try:
+        import os
+
+        source = {f.name: os.environ.get(f.name, "") for f in DEFAULT_CONFIG_FIELDS}
+        report = validate_config(DEFAULT_CONFIG_FIELDS, source)
+
+        if report.all_valid:
+            return ValidationResult(
+                component="config_values",
+                status=ValidationStatus.PASS,
+                message=f"All {report.total} configuration values valid",
+            )
+
+        details = "; ".join(
+            "; ".join(r.errors) for r in report.results if not r.passed
+        )
+        return ValidationResult(
+            component="config_values",
+            status=ValidationStatus.FAIL,
+            message=f"{report.failed} configuration error(s): {details}",
+            remediation="Set the required environment variables or check backend/core/config_validation.py",
+        )
+    except Exception as exc:
+        return ValidationResult(
+            component="config_values",
+            status=ValidationStatus.FAIL,
+            message=f"Config validation failed: {exc}",
+            remediation="Review backend/core/config_validation.py",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Default check registry
 # ---------------------------------------------------------------------------
 
 _DEFAULT_CHECKS: tuple[ValidationCheck, ...] = (
     _check_config_validity,
+    _check_config_values,
     _check_database_connectivity,
     _check_temp_directory,
     _check_app_metadata,

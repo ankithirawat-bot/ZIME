@@ -12,6 +12,7 @@ from typing import Sequence
 
 from backend.cli.formatter import format_error, format_result
 from backend.engines.factor_engine import FactorRequest
+from backend.core.constants import DEFAULT_DATA_INTERVAL, DEFAULT_DATA_PERIOD
 from backend.services.research_service import (
     ResearchService,
     VALID_INTERVALS,
@@ -90,15 +91,15 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument(
         "--period",
         type=str,
-        default="1y",
-        help="Historical period (default: 1y). Valid: %s" % ", ".join(sorted(VALID_PERIODS)),
+        default=DEFAULT_DATA_PERIOD,
+        help="Historical period (default: %s). Valid: %%s" % DEFAULT_DATA_PERIOD % ", ".join(sorted(VALID_PERIODS)),
     )
 
     analyze_parser.add_argument(
         "--interval",
         type=str,
-        default="1d",
-        help="Data interval (default: 1d). Valid: %s" % ", ".join(sorted(VALID_INTERVALS)),
+        default=DEFAULT_DATA_INTERVAL,
+        help="Data interval (default: %s). Valid: %%s" % DEFAULT_DATA_INTERVAL % ", ".join(sorted(VALID_INTERVALS)),
     )
 
     analyze_parser.add_argument(

@@ -16,8 +16,9 @@ from typing import Any
 
 import pandas as pd
 
-from backend.engines.factor_engine import EngineError, FactorEngine, FactorRequest
+from backend.core.constants import DEFAULT_DATA_INTERVAL, DEFAULT_DATA_PERIOD
 from backend.core.factor_result import FactorResult
+from backend.engines.factor_engine import EngineError, FactorEngine, FactorRequest
 from backend.providers.base import MarketDataProvider
 from backend.providers.yfinance_provider import YFinanceProvider
 
@@ -102,8 +103,8 @@ class ResearchService:
         self,
         symbol: str,
         factor_requests: list[FactorRequest],
-        period: str = "1y",
-        interval: str = "1d",
+        period: str = DEFAULT_DATA_PERIOD,
+        interval: str = DEFAULT_DATA_INTERVAL,
     ) -> ResearchResult:
         """Run a full research analysis for a symbol.
 

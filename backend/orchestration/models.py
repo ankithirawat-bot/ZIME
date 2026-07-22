@@ -15,6 +15,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from backend.core.constants import ORCHESTRATION_RETRY_MAX_ATTEMPTS
+
 JOB_TYPE_HISTORICAL_PRICE = "HistoricalPriceUpdate"
 JOB_TYPE_CORPORATE_ACTION = "CorporateActionUpdate"
 JOB_TYPE_FUNDAMENTAL = "FundamentalUpdate"
@@ -56,7 +58,7 @@ class RetryPolicy:
         retryable_exceptions: Tuple of exception types eligible for retry.
     """
 
-    max_attempts: int = 1
+    max_attempts: int = ORCHESTRATION_RETRY_MAX_ATTEMPTS
     backoff: Callable[[int], float] = no_backoff
     retryable_exceptions: tuple[type[Exception], ...] = (Exception,)
 

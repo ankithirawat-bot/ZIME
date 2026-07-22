@@ -10,6 +10,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from backend.core.constants import (
+    DEFAULT_INITIAL_CAPITAL,
+    DEFAULT_MAX_POSITION_SIZE,
+    DEFAULT_MIN_POSITION_SIZE,
+)
+
 
 @dataclass(frozen=True)
 class SizingMetadata:
@@ -58,8 +64,8 @@ class SizingConfig:
 
     method: str = "fixed_fractional"
     risk_per_trade: float = 0.02
-    max_position_size: float = 0.25
-    min_position_size: float = 0.01
+    max_position_size: float = DEFAULT_MAX_POSITION_SIZE
+    min_position_size: float = DEFAULT_MIN_POSITION_SIZE
     max_portfolio_exposure: float = 1.0
     max_sector_exposure: float = 0.30
     cash_reserve: float = 0.05
@@ -72,7 +78,7 @@ class SizingConfig:
     vol_target: float = 0.15
     vol_lookback: int = 20
     equal_risk_vol_target: float = 0.15
-    default_account_size: float = 1000000.0
+    default_account_size: float = DEFAULT_INITIAL_CAPITAL
 
 
 @dataclass(frozen=True)

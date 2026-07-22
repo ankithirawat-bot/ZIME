@@ -1,8 +1,11 @@
 ﻿## Objective
-- Implement ZIME, an evidence-driven investment research and decision platform for the Indian stock market, using capability-based sprint workflow.
-- Current focus: analytics engines producing explainable `AnalyticsFact` from multiple independent signals without exposing indicator values.
+Deliver the complete **ZIME v1.0** platform — production-grade investment research, optimization, validation, execution, trading, and service platform — with focus on the analytics pipeline architecture and operational hardening.
 
 ## Important Details
+- **Public API backwards compatibility is strict**: no existing API across analytics, optimization, validation, execution, trading, brokers, or core may be changed.
+- **Architecture**: frozen dataclasses, Protocols for dependency injection, absolute imports, zero circular imports, event-driven, structured logging.
+- **Quality gates**: Ruff 0 errors, 100 % pytest passing, deterministic/idempotent operations, fully typed.
+- All sprints (42A→C, 43A→D, 44A, RC1.5→RC6) are completed and not further modified.
 - Project root: `D:\Documents\Business\Development\Projects\ZIME`
 - Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, pandas
 - Enum naming convention: All enum member names are UPPERCASE; values are human-readable strings (TrendState / MomentumState / VolumeState / RelativeStrengthState / VolatilityState use `StrEnum`)
@@ -10,24 +13,20 @@
 - Storage package pattern: frozen dataclass models → normalizer → validator → repository → service layer
 - PowerShell does NOT support heredocs; probe scripts written to `C:\Users\ankit\AppData\Local\Temp\opencode\` and run with `$env:PYTHONPATH="D:\Documents\Business\Development\Projects\ZIME"`
 - The 195 `ruff check backend/` errors are pre-existing in unrelated modules (factors/engines) outside sprint scope; per-sprint analytics packages are ruff-clean.
-- `AnalyticsContext` extended with optional `benchmark_prices`/`sector_prices`/`industry_prices` (for RS); all engines use `TrendConfig`-subclass configs for shared `AnalyticsContext.config` compatibility.
-- Calibration note (Volatility): probe-confirmed sigma→state mapping: 0.0005=Very Low, 0.006=Low, 0.012=Normal, 0.022=High, 0.03=Very High. Persistence signal uses continuous per-window normalized scores (not binary). Minimum bars for full signal availability = 41 (volatility_trend needs 2×20 returns).
 
 ## Work State
 ### Completed
-- Sprints 14–23B: factor framework, RS, trend quality, patterns, volume, composite, trade planning, risk, portfolio, simulation, strategy infra+library
-- Sprint 24A–24C: data platform, normalization, storage engine ABCs
-- Sprint 24D: Upstox provider + retry + auth
-- Sprint 24E: PostgreSQL repository refinement (820 tests)
-- Sprint 24F: Corporate Actions Platform (55 tests, 875 total)
-- Sprint 24G: Fundamentals Platform (45 tests, 920 total)
-- Sprint 24H: Data Orchestration Platform — `backend/orchestration/` 41 tests, 961 total
-- Sprint 24I: Data Quality & Multi-Provider Validation Platform — `backend/data_quality/` 58 tests, 1019 total
-- Sprint 30B: Trend Engine — `backend/analytics/trend/` COMPLETE (27 tests, 1046 total, 100% impl cov)
-- Sprint 30C: Momentum Engine — `backend/analytics/momentum/` COMPLETE (30 tests, 1076 total, 100% impl cov)
-- Sprint 30D: Volume Engine — `backend/analytics/volume/` COMPLETE (33 tests, 1109 total, 100% impl cov); committed as `cf22bba` "feat(analytics): implement volume engine" (full analytics foundation: Core/Trend/Momentum/Volume + shared integration, 1109 tests)
-- Sprint 30E: Relative Strength Engine — `backend/analytics/relative_strength/` COMPLETE (33 tests, 1142 total, 100% impl cov); committed as `208743a` "feat(analytics): implement relative strength engine"
-- Sprint 30F: Volatility Engine — `backend/analytics/volatility/` COMPLETE (41 tests, 1183 total, 100% impl cov); NOT yet committed. Public API exposes only `AnalyticsFact(name="Volatility")`; NO ATR / Bollinger / VIX / raw volatility values.
+- Sprints 14–44A, RC1.5→RC6: factor framework, RS, trend quality, patterns, volume, composite, trade planning, risk, portfolio, simulation, strategy infra+library, data platform, providers, storage, corporate actions, fundamentals, orchestration, data quality, all 5 analytics engines (Trend/Momentum/Volume/RS/Volatility), portfolio optimization (42A/B/C), validation (43A/B/C/D), execution (44A), architecture consolidation (RC1.5), trading (RC2), broker integration (RC3), service platform (RC4/R4.1), client (RC5), production (RC6) — 1183 tests total across all modules
+- Sprint 30F Volatility Engine — `backend/analytics/volatility/` COMPLETE (41 tests, NOT yet committed)
+- TD0-003: Introduce Analytics Execution Pipeline — `backend/analytics/pipeline.py` with `AnalyticsPipeline` + `PipelineResult`; `backend/recommendation/` package with `RecommendationEngine` depending only on pipeline; committed as `7bcbfbe`
+- TD0-004: Introduce Analytics Plugin Registry — `backend/analytics/registry.py` with `AnalyticsRegistry` + `create_default_registry()`; pipeline consumes registry (zero engine-specific imports); committed as `8a71a90`
+- TD0-005: Separate Dependency Composition from Pipeline Assembly — `backend/bootstrap/pipeline_bootstrap.py` with `create_default_pipeline()` + production/testing/development wiring; `PipelineFactory.create()` is pure assembly (no fallback defaults); committed as `b4ac8fb`
+- TD0-006: Centralize Application Metadata — `backend/core/app_metadata.py` with `AppMetadata` model + `get_app_metadata()` reading version from `pyproject.toml` via `tomllib`; `main.py` uses it for FastAPI constructor; committed as `705c211`
+- TD0-007: Add Analytics Execution Telemetry — `backend/analytics/execution_report.py` with `EngineExecutionResult` + `PipelineExecutionReport`; `PipelineResult.report` field added; pipeline populates per-engine timestamps, status, warnings, exception types; committed as `4e90431`
+- TD-P001: Add Recommendation Result Caching — `backend/cache/` package with `CacheProvider` ABC, `MemoryCache` (thread-safe with TTL), `make_cache_key()` (deterministic from context), `CacheStats` (hits/misses/ratio); `RecommendationEngine` accepts optional `CacheProvider`; committed as `4550517`
+- TD-P002: Add Configurable Parallel Analytics Execution — `backend/analytics/execution.py` with `ExecutionStrategy` ABC, `SequentialExecutionStrategy`, `ParallelExecutionStrategy` (ThreadPoolExecutor); pipeline accepts `execution_strategy="parallel"`; benchmarks in `backend/analytics/benchmarks/`; committed as `5bdebc5`
+- TD-R001: Add Startup Dependency Validation — `backend/core/startup_validation.py` with `ValidationCheck` protocol, `ValidationResult`, `StartupValidationReport`, `run_startup_validations()`, `assert_startup_validations()` (sys.exit on failure); checks: config validity, DB connectivity, temp directory, app metadata, env vars; wired into `main.py`; committed as `05072c0`
+- TD-S001: Harden Secret Management and Configuration — `backend/core/config_validation.py` with `ConfigField` metadata (name, required, secret, default, validator), `mask_url()`, `mask_secret()`, `validate_config()`, `DEFAULT_CONFIG_FIELDS` (DATABASE_URL, UPSTOX_API_KEY, UPSTOX_API_SECRET, UPSTOX_ACCESS_TOKEN), validators `is_non_empty`, `is_port`, `is_url`; wired into startup validation (`_check_config_values` in `startup_validation.py`); 26 tests in `backend/core/test_config_validation.py` (missing required, invalid values, secret masking, validators, multiple errors, report counts, startup integration); ruff-clean, not committed.
 
 ### Active
 - (none)
@@ -36,19 +35,21 @@
 - (none)
 
 ## Next Move
-1. (Optional) Commit Sprint 30F Volatility Engine — `git add backend/analytics/volatility backend/analytics/__init__.py` then commit (has NOT been done yet; do not commit unless explicitly requested).
-2. Consider next analytics capability: e.g. a composite Market-Regime engine combining Trend/Momentum/Volume/RS/Volatility facts, or exposing analytics via the API/service layer.
+1. (Optional) Commit TD-S001 — `git add backend/core/config_validation.py backend/core/startup_validation.py backend/core/test_config_validation.py` then commit as `feat(core): harden secret management and configuration validation`
+2. (Optional) Commit Sprint 30F Volatility Engine — `git add backend/analytics/volatility/ backend/analytics/__init__.py` then commit
+3. Consider next capability: e.g. Market-Regime composite engine, analytics API service layer, or broker adapters
 
 ## Relevant Files
-- `backend/analytics/models.py`: `AnalyticsContext` (with `benchmark_prices`/`sector_prices`/`industry_prices`), `AnalyticsFact`, `MarketBar`, `CorporateAction`, `TrendConfig`
-- `backend/analytics/__init__.py`: exports all engines (Trend/Momentum/Volume/RS/Volatility) + shared models
-- `backend/analytics/volatility/__init__.py`: public exports
-- `backend/analytics/volatility/exceptions.py`: `VolatilityError`, `InsufficientDataError`, `SignalError`
-- `backend/analytics/volatility/evidence.py`: `Evidence`, `evidence_texts()`
-- `backend/analytics/volatility/models.py`: `VolatilityState` (StrEnum), `VolatilityConfig(TrendConfig)`, `SignalOutput`, `EvaluatorResult`, `ScoringResult`
-- `backend/analytics/volatility/signals.py`: 4 signals, `SignalRegistry`, `build_default_signal_registry()` — helpers `_closes`/`_returns`/`_stdev`, constants `HV_BASELINE`/`HV_SCALE`/`RANGE_BASELINE`/`RANGE_SCALE`
-- `backend/analytics/volatility/evaluators.py`: `WeightedEvaluator.evaluate(outputs, config)` with `_WEIGHT_KEYS`
-- `backend/analytics/volatility/scoring.py`: `VolatilityScorer.score(result, completeness)` (staticmethod) → state + confidence; `_state_from_score`, `_downgrade`
-- `backend/analytics/volatility/volatility_engine.py`: `VolatilityEngine.analyze(context)` → `AnalyticsFact(name="Volatility")`; `_warnings()`
-- `backend/analytics/volatility/test_volatility_engine.py`: 36 tests (all states, conflict, missing/edge data, registry, public-API, scoring, evaluators)
-- Prior packages: `backend/analytics/trend/`, `backend/analytics/momentum/`, `backend/analytics/volume/`, `backend/analytics/relative_strength/`, `backend/fundamentals/`, `backend/orchestration/`, `backend/data_quality/`, `backend/storage/postgresql/` (ALL_DDL=30)
+- `backend/analytics/pipeline.py` — pipeline orchestration (TD0-003→004→007→P002)
+- `backend/analytics/registry.py` — plugin registry (TD0-004)
+- `backend/analytics/execution_report.py` — execution telemetry (TD0-007)
+- `backend/analytics/execution.py` — sequential/parallel execution strategies (TD-P002)
+- `backend/analytics/benchmarks/` — strategy benchmarks (TD-P002)
+- `backend/recommendation/recommendation_engine.py` — recommendation with optional cache (TD0-003→P001)
+- `backend/cache/` — cache abstraction: `CacheProvider`, `MemoryCache`, `make_cache_key` (TD-P001)
+- `backend/bootstrap/pipeline_bootstrap.py` — dependency composition for MarketPipeline (TD0-005)
+- `backend/core/app_metadata.py` — `AppMetadata` + `get_app_metadata()` (TD0-006)
+- `backend/core/startup_validation.py` — startup validation framework (TD-R001→S001)
+- `backend/core/config_validation.py` — config field metadata + secret masking (TD-S001)
+- `backend/core/test_config_validation.py` — 26 tests for config validation (TD-S001)
+- `backend/analytics/volatility/` — Volatility Engine (Sprint 30F, not yet committed)

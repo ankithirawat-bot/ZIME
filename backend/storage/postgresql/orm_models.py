@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from backend.core.constants import DEFAULT_EXCHANGE, DEFAULT_INSTRUMENT_TYPE
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -37,7 +38,7 @@ class Symbol(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(50), nullable=False, index=True)
     exchange = Column(String(10), nullable=False)
-    instrument_type = Column(String(20), nullable=False, default="EQ")
+    instrument_type = Column(String(20), nullable=False, default=DEFAULT_INSTRUMENT_TYPE)
     isin = Column(String(12), nullable=True)
     provider_symbol = Column(String(50), nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))

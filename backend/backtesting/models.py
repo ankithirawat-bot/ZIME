@@ -10,6 +10,8 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
+from backend.core.constants import DEFAULT_INITIAL_CAPITAL
+
 
 class OrderType(StrEnum):
     """Order types for backtesting."""
@@ -77,7 +79,7 @@ class BacktestConfig:
         stamp_duty_rate: Stamp duty rate.
     """
 
-    initial_capital: float = 1_000_000.0
+    initial_capital: float = DEFAULT_INITIAL_CAPITAL
     start_date: date = field(default_factory=date.today)
     end_date: date = field(default_factory=date.today)
     symbols: tuple[str, ...] = field(default_factory=tuple)

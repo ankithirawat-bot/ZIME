@@ -15,6 +15,7 @@ from backend.backtesting.models import (
     PerformanceMetrics,
     Trade,
 )
+from backend.core.constants import DATE_FORMAT_Y, DATE_FORMAT_YM
 
 
 def calculate_cagr(start_value: float, end_value: float, years: float) -> float:
@@ -259,7 +260,7 @@ def calculate_monthly_returns(
 
     monthly: dict[str, list[EquityPoint]] = {}
     for point in equity_curve:
-        key = point.date.strftime("%Y-%m")
+        key = point.date.strftime(DATE_FORMAT_YM)
         if key not in monthly:
             monthly[key] = []
         monthly[key].append(point)
@@ -296,7 +297,7 @@ def calculate_yearly_returns(
 
     yearly: dict[str, list[EquityPoint]] = {}
     for point in equity_curve:
-        key = point.date.strftime("%Y")
+        key = point.date.strftime(DATE_FORMAT_Y)
         if key not in yearly:
             yearly[key] = []
         yearly[key].append(point)

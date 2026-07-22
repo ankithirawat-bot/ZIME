@@ -11,6 +11,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from backend.core.constants import DEFAULT_DATA_INTERVAL, DEFAULT_DATA_PERIOD
+
 
 class FactorRequestModel(BaseModel):
     """A single factor execution request.
@@ -55,12 +57,12 @@ class ResearchRequest(BaseModel):
         examples=[[{"factor": "sma", "params": {"period": 20}}]],
     )
     period: str = Field(
-        default="1y",
+        default=DEFAULT_DATA_PERIOD,
         description="Historical period for data download",
         examples=["1y"],
     )
     interval: str = Field(
-        default="1d",
+        default=DEFAULT_DATA_INTERVAL,
         description="Data interval",
         examples=["1d"],
     )
@@ -135,4 +137,4 @@ class HealthResponse(BaseModel):
     """
 
     status: str = "healthy"
-    version: str = "0.1.0"
+    version: str = "1.0.0"

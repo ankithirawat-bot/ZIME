@@ -11,6 +11,13 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from backend.core.constants import (
+    RETRY_BACKOFF_FACTOR,
+    RETRY_BASE_DELAY,
+    RETRY_MAX_ATTEMPTS,
+    RETRY_MAX_DELAY,
+)
+
 
 @dataclass(frozen=True)
 class RetryConfig:
@@ -24,10 +31,10 @@ class RetryConfig:
         retryable_errors:  Exception types that trigger a retry.
     """
 
-    max_attempts: int = 3
-    base_delay: float = 1.0
-    backoff_factor: float = 2.0
-    max_delay: float = 30.0
+    max_attempts: int = RETRY_MAX_ATTEMPTS
+    base_delay: float = RETRY_BASE_DELAY
+    backoff_factor: float = RETRY_BACKOFF_FACTOR
+    max_delay: float = RETRY_MAX_DELAY
     retryable_errors: tuple[type[Exception], ...] = field(default_factory=tuple)
 
 
@@ -103,9 +110,9 @@ def execute_with_retry[T](
 
 def compute_delay(
     attempt: int,
-    base_delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    max_delay: float = 30.0,
+    base_delay: float = RETRY_BASE_DELAY,
+    backoff_factor: float = RETRY_BACKOFF_FACTOR,
+    max_delay: float = RETRY_MAX_DELAY,
 ) -> float:
     """Compute exponential backoff delay for a given attempt.
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
 from backend.api.models import (
     EngineErrorResponse,
     FactorRequestModel,
@@ -19,7 +20,7 @@ from backend.api.models import (
 from backend.engines.factor_engine import FactorRequest
 from backend.services.research_service import ResearchService, VALID_PERIODS, VALID_INTERVALS
 
-router = APIRouter(prefix="/api/v1/research", tags=["research"])
+router = APIRouter(prefix=ROUTE_RESEARCH, tags=["research"])
 
 # Valid periods and intervals for request validation
 VALID_PERIODS_LIST = sorted(VALID_PERIODS)
@@ -27,7 +28,7 @@ VALID_INTERVALS_LIST = sorted(VALID_INTERVALS)
 
 
 @router.get(
-    "/health",
+    HEALTH_ENDPOINT,
     response_model=HealthResponse,
     summary="Health check",
     description="Returns the health status of the research service.",

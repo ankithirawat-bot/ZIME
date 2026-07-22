@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
+from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
 from backend.core.enums import FactorCategory, Signal
 from backend.core.factor_result import FactorResult
 from backend.engines.factor_engine import EngineError, FactorRequest
@@ -88,7 +89,7 @@ def mock_research_service(result: ResearchResult):
 
 # ========== HEALTH ENDPOINT ==========
 print("--- Health Endpoint ---")
-response = client.get("/api/v1/research/health")
+response = client.get(f"{ROUTE_RESEARCH}/{HEALTH_ENDPOINT.lstrip('/')}")
 check("health: status 200", response.status_code == 200)
 data = response.json()
 check("health: status=healthy", data["status"] == "healthy")
@@ -99,7 +100,7 @@ print("--- Successful Request ---")
 fake_result = make_fake_result()
 with mock_research_service(fake_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [
@@ -144,7 +145,7 @@ multi_result = make_fake_result(
 )
 with mock_research_service(multi_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [
@@ -167,7 +168,7 @@ error_result = make_fake_result(
 )
 with mock_research_service(error_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "INVALID.NS",
             "factor_requests": [{"factor": "sma", "params": {}}],
@@ -182,7 +183,7 @@ check("errors: message", "not found" in data["errors"][0]["message"])
 # ========== VALIDATION: EMPTY SYMBOL ==========
 print("--- Validation: Empty Symbol ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "",
         "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
@@ -193,7 +194,7 @@ check("empty symbol: status 422", response.status_code == 422)
 # ========== VALIDATION: INVALID PERIOD ==========
 print("--- Validation: Invalid Period ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "RELIANCE.NS",
         "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
@@ -207,7 +208,7 @@ check("invalid period: error message", "period" in data["detail"].lower())
 # ========== VALIDATION: INVALID INTERVAL ==========
 print("--- Validation: Invalid Interval ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "RELIANCE.NS",
         "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
@@ -221,7 +222,7 @@ check("invalid interval: error message", "interval" in data["detail"].lower())
 # ========== VALIDATION: EMPTY FACTOR LIST ==========
 print("--- Validation: Empty Factor List ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "RELIANCE.NS",
         "factor_requests": [],
@@ -232,7 +233,7 @@ check("empty factors: status 422", response.status_code == 422)
 # ========== VALIDATION: MISSING FACTOR FIELD ==========
 print("--- Validation: Missing Factor Field ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "RELIANCE.NS",
         "factor_requests": [{"params": {"period": 20}}],
@@ -243,7 +244,7 @@ check("missing factor: status 422", response.status_code == 422)
 # ========== VALIDATION: MISSING SYMBOL ==========
 print("--- Validation: Missing Symbol ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
     },
@@ -253,7 +254,7 @@ check("missing symbol: status 422", response.status_code == 422)
 # ========== VALIDATION: MISSING FACTOR_REQUESTS ==========
 print("--- Validation: Missing factor_requests ---")
 response = client.post(
-    "/api/v1/research",
+    ROUTE_RESEARCH,
     json={
         "symbol": "RELIANCE.NS",
     },
@@ -268,7 +269,7 @@ unknown_result = make_fake_result(
 )
 with mock_research_service(unknown_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [{"factor": "unknown", "params": {}}],
@@ -285,7 +286,7 @@ mock_service_fail = MagicMock()
 mock_service_fail.analyze.side_effect = Exception("yfinance connection lost")
 with patch("backend.api.research.ResearchService", return_value=mock_service_fail):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
@@ -312,7 +313,7 @@ check("openapi: HealthResponse schema", "HealthResponse" in openapi["components"
 print("--- Response Model Completeness ---")
 with mock_research_service(fake_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [{"factor": "sma", "params": {"period": 20}}],
@@ -331,7 +332,7 @@ check("model: metadata field", "metadata" in data)
 print("--- Factor Result Model ---")
 with mock_research_service(fake_result):
     response = client.post(
-        "/api/v1/research",
+        ROUTE_RESEARCH,
         json={
             "symbol": "RELIANCE.NS",
             "factor_requests": [{"factor": "sma", "params": {"period": 20}}],

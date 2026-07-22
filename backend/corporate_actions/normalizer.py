@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+from backend.core.constants import DEFAULT_EXCHANGE
 from backend.corporate_actions.exceptions import UnsupportedActionTypeError
 from backend.corporate_actions.models import CorporateAction, CorporateActionBatch
 from backend.corporate_actions.types import ActionType
@@ -46,7 +47,7 @@ class CorporateActionNormalizer:
         action_type = self._resolve_type(str(raw_type))
 
         symbol = payload.get("symbol")
-        exchange = payload.get("exchange", "NSE")
+        exchange = payload.get("exchange", DEFAULT_EXCHANGE)
         if not symbol:
             raise ValueError("Missing symbol in payload")
 

@@ -10,6 +10,16 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import StrEnum
 
+from backend.core.constants import (
+    STAGE_CORPORATE_ACTION,
+    STAGE_DATA_QUALITY,
+    STAGE_FETCH,
+    STAGE_NORMALIZE,
+    STAGE_PERSIST,
+    STAGE_REPORT,
+    STAGE_VALIDATE,
+)
+
 
 class PipelineStatus(StrEnum):
     """Overall pipeline execution status."""
@@ -30,13 +40,13 @@ class SymbolStatus(StrEnum):
 class StageName(StrEnum):
     """Pipeline stage identifiers."""
 
-    FETCH = "fetch"
-    VALIDATE = "validate"
-    NORMALIZE = "normalize"
-    CORPORATE_ACTION = "corporate_action"
-    DATA_QUALITY = "data_quality"
-    PERSIST = "persist"
-    REPORT = "report"
+    FETCH = STAGE_FETCH
+    VALIDATE = STAGE_VALIDATE
+    NORMALIZE = STAGE_NORMALIZE
+    CORPORATE_ACTION = STAGE_CORPORATE_ACTION
+    DATA_QUALITY = STAGE_DATA_QUALITY
+    PERSIST = STAGE_PERSIST
+    REPORT = STAGE_REPORT
 
 
 @dataclass(frozen=True)

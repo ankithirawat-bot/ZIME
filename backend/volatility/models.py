@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from backend.core.constants import DEFAULT_MAX_ITERATIONS, DEFAULT_TOLERANCE
+
 
 @dataclass(frozen=True)
 class VolatilityMetadata:
@@ -58,8 +60,8 @@ class VolatilityConfig:
     ewma_lambda: float = 0.94
     garch_p: int = 1
     garch_q: int = 1
-    max_iterations: int = 1000
-    tolerance: float = 1e-8
+    max_iterations: int = DEFAULT_MAX_ITERATIONS
+    tolerance: float = DEFAULT_TOLERANCE
     min_periods: int = 20
 
 
