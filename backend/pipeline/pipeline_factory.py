@@ -1,6 +1,8 @@
 """Pipeline factory for dependency injection.
 
 Constructs a fully configured MarketPipeline using dependency injection.
+The factory performs assembly only; dependency creation is handled by
+:mod:`backend.bootstrap.pipeline_bootstrap`.
 """
 
 from __future__ import annotations
@@ -31,35 +33,32 @@ class PipelineFactory:
     def create(
         registry: ProviderRegistry,
         conn_manager: ConnectionManager,
-        config: PipelineConfig | None = None,
-        normalizer: DataNormalizer | None = None,
-        validator: DataValidator | None = None,
-        anomaly_detector: AnomalyDetectorEngine | None = None,
-        adjustment_engine: AdjustmentEngine | None = None,
-        logger: logging.Logger | None = None,
+        config: PipelineConfig,
+        normalizer: DataNormalizer,
+        validator: DataValidator,
+        anomaly_detector: AnomalyDetectorEngine,
+        adjustment_engine: AdjustmentEngine,
+        logger: logging.Logger,
     ) -> MarketPipeline:
         """Create a fully configured MarketPipeline.
 
+        All dependencies must be provided; no fallback defaults are created.
+        Use :func:`backend.bootstrap.create_default_pipeline` for a
+        convenience helper that supplies defaults.
+
         Args:
-            registry:        Provider registry for data fetching.
-            conn_manager:    Database connection manager.
-            config:          Pipeline configuration (defaults created).
-            normalizer:      Data normalizer (defaults created).
-            validator:       Data quality validator (defaults created).
-            anomaly_detector: Anomaly detection engine (defaults created).
-            adjustment_engine: Corporate action adjustment engine (defaults created).
-            logger:          Logger instance (defaults created).
+            registry:          Provider registry for data fetching.
+            conn_manager:      Database connection manager.
+            config:            Pipeline configuration.
+            normalizer:        Data normalizer.
+            validator:         Data quality validator.
+            anomaly_detector:  Anomaly detection engine.
+            adjustment_engine: Corporate action adjustment engine.
+            logger:            Logger instance.
 
         Returns:
             Configured MarketPipeline instance.
         """
-        config = config or PipelineConfig()
-        normalizer = normalizer or DataNormalizer()
-        validator = validator or DataValidator()
-        anomaly_detector = anomaly_detector or AnomalyDetectorEngine()
-        adjustment_engine = adjustment_engine or AdjustmentEngine()
-        logger = logger or logging.getLogger("pipeline")
-
         data_engine = DataEngine(registry=registry, normalizer=normalizer)
         repository = PostgreSQLRepository(conn_manager)
 

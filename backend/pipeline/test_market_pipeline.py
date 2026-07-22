@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from backend.bootstrap.pipeline_bootstrap import create_default_pipeline
 from backend.data.models import DataRequest, DataResponse, DataStatus, DataType
 from backend.data_quality.anomaly_detector import AnomalyDetectorEngine
 from backend.data_quality.models import PriceBar
@@ -755,23 +756,25 @@ class TestMarketPipeline:
 
 
 class TestPipelineFactory:
-    def test_create_with_defaults(self):
+    def test_create_default_pipeline(self):
         mock_registry = MagicMock()
         mock_conn_manager = MagicMock()
 
-        pipeline = PipelineFactory.create(
+        pipeline = create_default_pipeline(
             registry=mock_registry,
             conn_manager=mock_conn_manager,
         )
         assert pipeline is not None
         assert pipeline.context is not None
+        assert pipeline.context.data_engine is not None
+        assert pipeline.context.repository is not None
 
     def test_create_with_custom_config(self):
         mock_registry = MagicMock()
         mock_conn_manager = MagicMock()
         config = PipelineConfig(exchange="BSE", batch_size=5)
 
-        pipeline = PipelineFactory.create(
+        pipeline = create_default_pipeline(
             registry=mock_registry,
             conn_manager=mock_conn_manager,
             config=config,
