@@ -11,7 +11,6 @@ from typing import Protocol
 import numpy as np
 
 
-
 class RiskBudgetProtocol(Protocol):
     """Protocol for risk budget engine."""
 
@@ -53,6 +52,12 @@ class RiskBudget:
 def portfolio_risk(weights: tuple[float, ...], volatilities: tuple[float, ...], corr: tuple[tuple[float, ...], ...], rf: float = 0.0) -> float:
     w = np.array(weights)
     vol = np.array(volatilities)
+    if vol.size == 0:
+        return 0.0 - rf
+    if not corr or len(corr) == 0:
+        # When no correlation matrix is supplied treat the assets as independent
+        # (diagonal identity), which makes |vol| the only contributor.
+        return float(np.sqrt(np.sum((w * vol) ** 2))) - rf
     mat = np.array(corr) * (vol[:, None] * vol[None, :])
     sigma_w = float(np.sqrt(w.T @ mat @ w))
     return sigma_w - rf
@@ -61,9 +66,13 @@ def portfolio_risk(weights: tuple[float, ...], volatilities: tuple[float, ...], 
 def asset_risk_contributions(weights: tuple[float, ...], volatilities: tuple[float, ...], corr: tuple[tuple[float, ...], ...], rf: float = 0.0) -> list[RiskContribution]:
     w = np.array(weights)
     s = np.array(volatilities)
-    mat = np.array(corr) * (s[:, None] * s[None, :])
+    if s.size == 0:
+        return []
+    if not corr or len(corr) == 0:
+        mat = np.diag(s ** 2)
+    else:
+        mat = np.array(corr) * (s[:, None] * s[None, :])
     sigma_w = portfolio_risk(weights, volatilities, corr, rf)
-    cov_port = mat @ w
     mrc = mat @ w
     rc = w * mrc
     percent = (rc / max(sigma_w, 1e-12)) * 100
@@ -73,11 +82,18 @@ def asset_risk_contributions(weights: tuple[float, ...], volatilities: tuple[flo
     return pairs
 
 
-def marginal_risk_contributions(weights: tuple[float, ...], returns: tuple[float, ...], volatilities=(), corr=(), rf: float = 0.0) -> tuple[float, ...]:
+def marginal_risk_contributions(weights: tuple[float, ...], returns: tuple[float, ...], volatilities=(), corr=(), rf: float = 0.0, *, vols=None, **kwargs) -> tuple[float, ...]:
+    # Backward-compatible alias: accept either ``vols`` (legacy kwarg) or ``volatilities``.
+    if vols is not None:
+        volatilities = vols
     # if volatilities empty, compute from returns
     s = np.array(volatilities) if volatilities else np.array(returns)
-    mat = np.array(corr if corr else ([0.0]*len(s)**2))
+    if s.size == 0:
+        # No sigma info at all — return a zero tuple of len(weights).
+        return tuple(0.0 for _ in weights)
     sigma_w = portfolio_risk(weights, s, corr, rf)
+    if sigma_w == 0:
+        return tuple(0.0 for _ in weights)
     # MRC approx: partial derivative of portfolio volatility w.r.t weight i
     eps = 1e-8
     mrc = []
@@ -96,7 +112,6 @@ def risk_contribution_percentages(weights: tuple[float, ...], volatilities: tupl
     excl_rf = portfolio_risk(weights, volatilities, corr, rf)
     if excl_rf <= 0:
         return tuple(0.0 for _ in weights)
-    n = len(weights)
     s = np.array(volatilities)
     mat = np.array(corr) * (s[:, None] * s[None, :])
     cov_port = mat @ w

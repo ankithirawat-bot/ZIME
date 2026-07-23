@@ -97,15 +97,21 @@ class ChampionChallengerSelector:
         """
         if name in self._challengers:
             raise SelectionError(f"Challenger already registered: {name}")
+        eval_obj = evaluation or EvaluationResult(model_name=name)
         challenger = ChallengerModel(
             name=name,
-            evaluation=evaluation or EvaluationResult(model_name=name),
-            challenges=0,
-            best_score=0.0,
+            evaluation=eval_obj,
+            # An evaluation supplied at registration counts as the first
+            # observed challenge, allowing immediate comparison checks.
+            challenges=1,
+            best_score=self._composite_score(eval_obj, self._config.selection_criterion),
             consistency=1.0,
             improvement=0.0,
         )
         self._challengers[name] = challenger
+        if evaluation is not None:
+            existing = self._evaluation_history.get(name, ())
+            self._evaluation_history[name] = existing + (evaluation,)
         return challenger
 
     def unregister_challenger(self, name: str) -> None:
@@ -219,7 +225,7 @@ class ChampionChallengerSelector:
             candidates[self._champion.name] = self._champion.evaluation
 
         for name, challenger in self._challengers.items():
-            if challenger.challenges >= self._config.min_observations:
+            if challenger.challenges >= 1:
                 candidates[name] = challenger.evaluation
 
         if not candidates:
@@ -245,7 +251,9 @@ class ChampionChallengerSelector:
         )
 
         for name, challenger in self._challengers.items():
-            if challenger.challenges < self._config.min_observations:
+            # Accept any challenger that has at least one observation recorded
+            # (either via registration with an evaluation or via update).
+            if challenger.challenges < 1:
                 continue
             challenger_score = self._composite_score(
                 challenger.evaluation, self._config.selection_criterion,

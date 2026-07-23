@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from backend.optimization.engine import OptimizationEngine
 from backend.optimization.exceptions import OptimizationError
-from backend.optimization.models import OptimizationConfig, ObjectiveType
-
+from backend.optimization.models import ObjectiveType, OptimizationConfig
 
 
 class OptimizationFactory:

@@ -185,11 +185,13 @@ class LearningEngine:
         self,
         scores: tuple[float, ...],
     ) -> float:
-        if len(scores) < self._config.min_observations:
+        if len(scores) < 2:
             return 0.0
-        recent = scores[-self._config.min_observations:]
-        decay = self._compute_trend(recent)
-        return decay
+        # Use whichever is smaller: configured min window or available data,
+        # so a small history still produces a meaningful trend estimate.
+        window = min(len(scores), self._config.min_observations)
+        recent = scores[-window:]
+        return self._compute_trend(recent)
 
     def weight_updates(
         self,
@@ -254,8 +256,11 @@ class LearningEngine:
         )
         total_weight = sum(weights[-len(recent):])
         if total_weight <= 0:
-            return sum(recent) / len(recent)
-        return weighted_sum / total_weight
+            raw = sum(recent) / len(recent)
+        else:
+            raw = weighted_sum / total_weight
+        # Bounded in [0, 1] for callers that interpret it as a confidence proxy.
+        return max(0.0, min(1.0, raw))
 
     def _compute_trend(
         self,

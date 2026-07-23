@@ -374,8 +374,8 @@ class TestDeterministic:
 # =========================================================
 class TestRegression:
     def test_trend_engine_still_works(self) -> None:
-        from backend.trend.trend_engine import TrendQualityEngine
         from backend.trend.models import TrendSnapshot
+        from backend.trend.trend_engine import TrendQualityEngine
         engine = TrendQualityEngine()
         r = engine.evaluate(TrendSnapshot(current_price=2500))
         assert r.overall_score >= 0

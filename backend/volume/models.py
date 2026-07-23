@@ -6,12 +6,11 @@ Data classes for institutional-quality volume analysis.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class VolumeQuality(str, Enum):
+class VolumeQuality(StrEnum):
     """Volume quality classification."""
 
     EXCEPTIONAL = "Exceptional"
@@ -42,16 +41,16 @@ class VolumeSnapshot:
 
     price: float
     volume: float = 0.0
-    avg_volume_20: Optional[float] = None
-    avg_volume_50: Optional[float] = None
-    breakout_volume: Optional[float] = None
-    consolidation_volume: Optional[float] = None
-    rvol: Optional[float] = None
-    accumulation_days: Optional[int] = None
-    distribution_days: Optional[int] = None
-    close_position_percent: Optional[float] = None
-    trend_quality: Optional[float] = None
-    atr: Optional[float] = None
+    avg_volume_20: float | None = None
+    avg_volume_50: float | None = None
+    breakout_volume: float | None = None
+    consolidation_volume: float | None = None
+    rvol: float | None = None
+    accumulation_days: int | None = None
+    distribution_days: int | None = None
+    close_position_percent: float | None = None
+    trend_quality: float | None = None
+    atr: float | None = None
 
 
 @dataclass(frozen=True)

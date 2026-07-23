@@ -9,13 +9,13 @@ from __future__ import annotations
 import pytest
 
 from backend.patterns.base import PatternDetector
-from backend.patterns.engine import PatternEngine
-from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
-from backend.patterns.detectors.vcp import VCPDetector
-from backend.patterns.detectors.flat_base import FlatBaseDetector
 from backend.patterns.detectors.ascending_triangle import AscendingTriangleDetector
 from backend.patterns.detectors.cup_handle import CupHandleDetector
+from backend.patterns.detectors.flat_base import FlatBaseDetector
 from backend.patterns.detectors.high_tight_flag import HighTightFlagDetector
+from backend.patterns.detectors.vcp import VCPDetector
+from backend.patterns.engine import PatternEngine
+from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 
 
 @pytest.fixture
@@ -338,15 +338,15 @@ class TestEngine:
 # =========================================================
 class TestRegression:
     def test_trend_engine_still_works(self) -> None:
-        from backend.trend.trend_engine import TrendQualityEngine
         from backend.trend.models import TrendSnapshot
+        from backend.trend.trend_engine import TrendQualityEngine
         engine = TrendQualityEngine()
         r = engine.evaluate(TrendSnapshot(current_price=2500))
         assert r.overall_score >= 0
 
     def test_rs_engine_still_works(self) -> None:
-        from backend.relative_strength.rs_engine import analyze_relative_strength
         from backend.relative_strength.models import BenchmarkData, StockSnapshot
+        from backend.relative_strength.rs_engine import analyze_relative_strength
         s = StockSnapshot(
             symbol="TEST",
             stock=BenchmarkData(name="S", returns_1y=25),

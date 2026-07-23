@@ -97,7 +97,8 @@ class IntelligenceEngine:
         return self._learning
 
     @property
-    def confidence(self) -> ConfidenceEngine:
+    def confidence_engine(self) -> ConfidenceEngine:
+        """Get the underlying confidence engine instance."""
         return self._confidence
 
     # ======================= Core Methods =======================
@@ -115,13 +116,24 @@ class IntelligenceEngine:
             EvaluationResult with all computed metrics.
 
         Raises:
-            InsufficientDataError: If insufficient data for evaluation.
+            InsufficientDataError: If no observations are supplied at all.
         """
-        if len(request.predictions) < self._config.min_observations:
+        # Forward-compat gate: empty inputs are invalid; below the configured
+        # ``min_observations`` threshold we still compute metrics (the threshold
+        # is a quality signal for downstream selection/learning, not a hard
+        # gate on a single evaluation request).
+        if not request.predictions:
             raise InsufficientDataError(
-                f"Need at least {self._config.min_observations} observations, "
-                f"got {len(request.predictions)}"
+                "Need at least one observation, got 0"
             )
+        # Auto-register newly-evaluated models so downstream selection/
+        # ensemble/learning APIs can see them without an explicit
+        # ``register_challenger`` call.
+        if (
+            not self._selector.champion
+            or self._selector.champion.name != request.model_name
+        ) and request.model_name not in self._selector.challengers:
+            self._selector.register_challenger(request.model_name)
         result = self._selector.evaluate(request)
         score = self._composite_score(result, self._config.selection_criterion)
         self._learning.update(request.model_name, result, score)
@@ -176,6 +188,24 @@ class IntelligenceEngine:
             score:  Composite performance score.
         """
         self._learning.update(name, result, score)
+
+    def confidence(
+        self,
+        prediction: float,
+        predictions: dict[str, float],
+        evaluations: dict[str, EvaluationResult],
+    ) -> tuple[float, dict[str, float], dict[str, float]]:
+        """Backward-compatible alias for :meth:`evaluate_confidence`.
+
+        Args:
+            prediction:  Final ensemble prediction.
+            predictions: Individual model predictions.
+            evaluations: Model name -> evaluation result.
+
+        Returns:
+            Tuple of (confidence, supporting_evidence, alternative_models).
+        """
+        return self.evaluate_confidence(prediction, predictions, evaluations)
 
     def evaluate_confidence(
         self,

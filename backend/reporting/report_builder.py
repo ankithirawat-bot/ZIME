@@ -7,9 +7,6 @@ research report using predefined rules. No AI/LLM involved.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
-
 from backend.core.enums import Signal
 from backend.core.factor_result import FactorResult
 from backend.engines.factor_engine import EngineError
@@ -162,11 +159,6 @@ def _build_momentum_section(factors: dict[str, FactorResult]) -> Section:
     # MACD
     for label, fr in factors.items():
         if "macd" in label.lower() and fr.value is not None:
-            metadata = fr.metadata or {}
-            macd_val = metadata.get("macd", fr.value)
-            signal_val = metadata.get("signal", 0)
-            histogram = metadata.get("histogram", 0)
-
             if fr.signal == Signal.BULLISH:
                 signals.append(f"{label}: MACD above signal line — bullish crossover")
                 interpretations.append("MACD shows bullish momentum")
@@ -246,7 +238,6 @@ def _build_volatility_section(factors: dict[str, FactorResult]) -> Section:
     for label, fr in factors.items():
         if "atr" in label.lower() and fr.value is not None:
             atr_val = fr.value
-            period = fr.metadata.get("period", "?") if fr.metadata else "?"
             if fr.signal == Signal.BULLISH:
                 signals.append(f"{label}: ATR at {atr_val:.4f} — increasing volatility")
                 interpretations.append(f"Volatility is elevated (ATR={atr_val:.4f})")
@@ -262,8 +253,6 @@ def _build_volatility_section(factors: dict[str, FactorResult]) -> Section:
         if "bollinger" in label.lower() and fr.value is not None:
             metadata = fr.metadata or {}
             bandwidth = metadata.get("bandwidth", 0)
-            percent_b = metadata.get("percent_b", 0.5)
-
             if fr.signal == Signal.BULLISH:
                 signals.append(f"{label}: Price near upper band — potential breakout")
                 interpretations.append("Bollinger Bands suggest upward pressure")

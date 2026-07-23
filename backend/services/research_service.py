@@ -14,17 +14,13 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-import pandas as pd
-
+import backend.factors.momentum  # noqa: F401 — triggers factor registration
+import backend.factors.price  # noqa: F401 — triggers factor registration
 from backend.core.constants import DEFAULT_DATA_INTERVAL, DEFAULT_DATA_PERIOD
 from backend.core.factor_result import FactorResult
 from backend.engines.factor_engine import EngineError, FactorEngine, FactorRequest
 from backend.providers.base import MarketDataProvider
 from backend.providers.yfinance_provider import YFinanceProvider
-
-import backend.factors.price  # noqa: F401 — triggers factor registration
-import backend.factors.momentum  # noqa: F401 — triggers factor registration
-
 
 VALID_PERIODS = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"}
 VALID_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"}

@@ -2,10 +2,10 @@
 Core enumerations for the ZIME factor framework.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Signal(str, Enum):
+class Signal(StrEnum):
     """Directional signal emitted by a factor computation.
 
     Used to indicate the directional interpretation of a factor's
@@ -17,7 +17,7 @@ class Signal(str, Enum):
     NEUTRAL = "neutral"
 
 
-class FactorCategory(str, Enum):
+class FactorCategory(StrEnum):
     """Categorizes factors by their analytical domain.
 
     Used for grouping, filtering, and routing factor results

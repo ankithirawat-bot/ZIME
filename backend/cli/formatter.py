@@ -6,12 +6,8 @@ Formats ResearchResult for terminal display.
 
 from __future__ import annotations
 
-from typing import Any
-
-from backend.engines.factor_engine import EngineError
 from backend.core.factor_result import FactorResult
 from backend.services.research_service import ResearchResult
-
 
 SEPARATOR = "=" * 50
 
@@ -29,11 +25,11 @@ def format_result(result: ResearchResult) -> str:
 
     # Header
     lines.append(SEPARATOR)
-    lines.append("Symbol:          %s" % result.symbol)
-    lines.append("Period:          %s" % result.period)
-    lines.append("Interval:        %s" % result.interval)
-    lines.append("Rows:            %d" % result.rows)
-    lines.append("Analysis Time:   %.1f ms" % result.execution_time_ms)
+    lines.append(f"Symbol:          {result.symbol}")
+    lines.append(f"Period:          {result.period}")
+    lines.append(f"Interval:        {result.interval}")
+    lines.append(f"Rows:            {result.rows}")
+    lines.append(f"Analysis Time:   {result.execution_time_ms:.1f} ms")
     lines.append(SEPARATOR)
 
     # Factor results
@@ -53,7 +49,7 @@ def format_result(result: ResearchResult) -> str:
         lines.append("Errors:")
         lines.append("-" * 50)
         for err in result.engine_errors:
-            lines.append("  [%s] %s" % (err.factor, err.message))
+            lines.append(f"  [{err.factor}] {err.message}")
 
     # Metadata warnings
     warnings = result.metadata.get("warnings", [])
@@ -62,7 +58,7 @@ def format_result(result: ResearchResult) -> str:
         lines.append("Warnings:")
         lines.append("-" * 50)
         for w in warnings:
-            lines.append("  - %s" % w)
+            lines.append(f"  - {w}")
 
     lines.append("")
     return "\n".join(lines)
@@ -81,26 +77,26 @@ def _format_factor(label: str, fr: FactorResult) -> str:
     lines: list[str] = []
 
     # Factor header
-    lines.append("  %s" % label)
+    lines.append(f"  {label}")
 
     # Value
     if fr.value is not None:
-        lines.append("    Value:      %.4f" % fr.value)
+        lines.append(f"    Value:      {fr.value:.4f}")
     else:
         lines.append("    Value:      N/A")
 
     # Signal
-    lines.append("    Signal:     %s" % fr.signal.value)
+    lines.append(f"    Signal:     {fr.signal.value}")
 
     # Confidence
     if fr.confidence is not None:
-        lines.append("    Confidence: %.2f" % fr.confidence)
+        lines.append(f"    Confidence: {fr.confidence:.2f}")
 
     # Metadata
     if fr.metadata:
         lines.append("    Metadata:")
         for k, v in fr.metadata.items():
-            lines.append("      %s: %s" % (k, v))
+            lines.append(f"      {k}: {v}")
 
     return "\n".join(lines)
 
@@ -114,4 +110,4 @@ def format_error(message: str) -> str:
     Returns:
         Formatted error string.
     """
-    return "Error: %s" % message
+    return f"Error: {message}"

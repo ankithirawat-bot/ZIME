@@ -14,8 +14,6 @@ Scoring:
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.patterns.base import PatternDetector
 from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 
@@ -230,14 +228,14 @@ class VCPDetector(PatternDetector):
 
         return max(0.0, min(100.0, conf))
 
-    def _calc_breakout(self, snap: PatternSnapshot) -> Optional[float]:
+    def _calc_breakout(self, snap: PatternSnapshot) -> float | None:
         pivot = snap.pivot_price
         if pivot is None:
             return None
         atr = snap.atr if snap.atr is not None else 0
         return pivot + atr * 0.1
 
-    def _calc_stop(self, snap: PatternSnapshot) -> Optional[float]:
+    def _calc_stop(self, snap: PatternSnapshot) -> float | None:
         pivot = snap.pivot_price
         if pivot is None:
             return None
@@ -247,9 +245,9 @@ class VCPDetector(PatternDetector):
     def _calc_rr(
         self,
         price: float,
-        breakout: Optional[float],
-        stop: Optional[float],
-    ) -> Optional[float]:
+        breakout: float | None,
+        stop: float | None,
+    ) -> float | None:
         if breakout is None or stop is None or stop == 0:
             return None
         entry = max(price, breakout)

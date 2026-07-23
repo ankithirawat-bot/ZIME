@@ -502,6 +502,13 @@ class Optimizers:
         else:
             weights = best_weights
 
+        # Final defensive renormalization to guarantee weights sum to 1.0
+        # (the inner perturbation loop mutates ``weights`` in place and can
+        # leave the cached ``best_weights`` in a non-normalized state).
+        final_sum = float(np.sum(weights))
+        if final_sum > EPSILON:
+            weights = weights / final_sum
+
         solve_time = time.time() - start_time
 
         # Calculate final metrics

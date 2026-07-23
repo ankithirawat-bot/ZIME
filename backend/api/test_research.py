@@ -9,17 +9,16 @@ from __future__ import annotations
 from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
-from backend.core.enums import FactorCategory, Signal
-from backend.core.factor_result import FactorResult
-from backend.engines.factor_engine import EngineError, FactorRequest
-from backend.services.research_service import ResearchResult
 
 # Import the app and router
 from backend.api.research import router
-from fastapi import FastAPI
+from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
+from backend.core.enums import FactorCategory, Signal
+from backend.core.factor_result import FactorResult
+from backend.engines.factor_engine import EngineError
+from backend.services.research_service import ResearchResult
 
 # Create a test app with just the research router
 app = FastAPI()
@@ -37,10 +36,10 @@ def check(name: str, condition: bool, detail: str = "") -> None:
     global passed, failed
     if condition:
         passed += 1
-        print("  PASS: %s" % name)
+        print(f"  PASS: {name}")
     else:
         failed += 1
-        print("  FAIL: %s%s" % (name, " (%s)" % detail if detail else ""))
+        print(f"  FAIL: {name}{f' ({detail})' if detail else ''}")
 
 
 def make_fake_result(
@@ -353,9 +352,9 @@ check("factor result: metadata", "metadata" in sma)
 print("")
 total = passed + failed
 print("=" * 50)
-print("RESULT: %d/%d passed" % (passed, total))
+print(f"RESULT: {passed}/{total} passed")
 if failed == 0:
     print("ALL TESTS PASSED")
 else:
-    print("FAILURES: %d" % failed)
+    print(f"FAILURES: {failed}")
 print("=" * 50)

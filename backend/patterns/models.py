@@ -7,11 +7,10 @@ Data classes for chart pattern detection and scoring.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class PatternType(str, Enum):
+class PatternType(StrEnum):
     """Detected pattern classification."""
 
     UNKNOWN = "Unknown"
@@ -48,15 +47,15 @@ class PatternSnapshot:
     highs: list[float] = field(default_factory=list)
     lows: list[float] = field(default_factory=list)
     closes: list[float] = field(default_factory=list)
-    pivot_price: Optional[float] = None
-    high_52w: Optional[float] = None
-    volatility: Optional[float] = None
-    atr: Optional[float] = None
-    contraction_count: Optional[int] = None
-    volume_dryup: Optional[float] = None
-    breakout_volume_ratio: Optional[float] = None
-    trend_quality: Optional[float] = None
-    relative_strength: Optional[float] = None
+    pivot_price: float | None = None
+    high_52w: float | None = None
+    volatility: float | None = None
+    atr: float | None = None
+    contraction_count: int | None = None
+    volume_dryup: float | None = None
+    breakout_volume_ratio: float | None = None
+    trend_quality: float | None = None
+    relative_strength: float | None = None
 
 
 @dataclass(frozen=True)
@@ -78,9 +77,9 @@ class PatternResult:
     pattern_name: PatternType
     score: float
     confidence: float
-    pivot_price: Optional[float] = None
-    breakout_price: Optional[float] = None
-    stop_price: Optional[float] = None
-    risk_reward: Optional[float] = None
+    pivot_price: float | None = None
+    breakout_price: float | None = None
+    stop_price: float | None = None
+    risk_reward: float | None = None
     reasons: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

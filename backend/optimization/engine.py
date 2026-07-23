@@ -12,7 +12,14 @@ from typing import Any
 
 import numpy as np
 
-from backend.optimization.allocation import AllocationRequest, AllocationResult, EqualWeight, Kelly, RiskParity, VolatilityTarget
+from backend.optimization.allocation import (
+    AllocationRequest,
+    AllocationResult,
+    EqualWeight,
+    Kelly,
+    RiskParity,
+    VolatilityTarget,
+)
 from backend.optimization.analytics import PortfolioAnalytics
 from backend.optimization.constraints import Constraints
 from backend.optimization.exceptions import (
@@ -806,16 +813,20 @@ class OptimizationEngine:
             AllocationResult
         """
         n = len(request_dict.get("asset_names", ()))
+        if n == 0:
+            # Derive asset count from expected_returns when asset_names omitted.
+            n = len(request_dict.get("expected_returns", ()) or ())
         expected_returns = tuple(request_dict.get("expected_returns", ()) or [0.0] * n)
         expected_volatilities = tuple(request_dict.get("volatilities", ()) or [1.0] * n)
         cov = request_dict.get("covariance", None)
         if cov is None:
             cov = tuple(tuple(0.1 if i != j else v ** 2 for j in range(n)) for i, v in enumerate(expected_volatilities))
+        asset_names = tuple(request_dict.get("asset_names", ())) or tuple(f"A{i}" for i in range(n))
         req = AllocationRequest(
             expected_returns=expected_returns,
             expected_volatilities=expected_volatilities,
             covariance=cov,
-            asset_names=tuple(request_dict.get("asset_names", ())),
+            asset_names=asset_names,
             cash_reserve=float(request_dict.get("cash_reserve", 0.0)),
             max_weight_per_asset=float(request_dict.get("max_weight", 1.0)),
             min_weight_per_asset=float(request_dict.get("min_weight", 0.0)),
@@ -831,19 +842,21 @@ class OptimizationEngine:
         elif method == "kelly":
             allocator = Kelly()
         else:
+            # Unknown / unspecified method falls back to equal-weight asset split.
             allocator = EqualWeight()
+        target_vol = req.objective_kwargs.get("target_vol", 0.15)
         try:
             if isinstance(allocator, VolatilityTarget):
                 weights = allocator.allocate(target_vol, expected_volatilities, cov)
+            elif isinstance(allocator, EqualWeight):
+                # Equal allocation returns asset weights only (cash reserve is tracked
+                # separately at the allocation layer), so use total=1.0.
+                weights = allocator.allocate(req.asset_names, total=1.0)
             else:
                 weights = allocator.allocate(req.asset_names, total=1.0 - req.cash_reserve)
             if req.asset_names:
                 weights = tuple(min(w, req.max_weight_per_asset) for w in weights)
-            w = np.array(weights)
-            new_weights = np.append(w, req.cash_reserve)
-            if new_weights.sum():
-                new_weights = new_weights / new_weights.sum()
-            budget = tuple(new_weights.tolist())
+            budget = tuple(weights)
             obj_val = req.objective_kwargs.get("objective_value", 0.0)
             return AllocationResult(weights=budget, objective_value=obj_val, status="SUCCESS")
         except Exception as e:

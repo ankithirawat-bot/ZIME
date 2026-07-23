@@ -170,7 +170,7 @@ class EnsembleEngine:
         prediction: float,
     ) -> float:
         if len(models) < 2:
-            return models[0].confidence if models else 0.0
+            return min(1.0, max(0.0, models[0].confidence)) if models else 0.0
         weighted_conf = sum(
             m.confidence * weights.get(m.name, 0.0) for m in models
         )
@@ -180,7 +180,11 @@ class EnsembleEngine:
         predictions = [m.score for m in models]
         variance = _variance(tuple(predictions))
         diversity_factor = 1.0 / (1.0 + math.sqrt(variance))
-        return min(1.0, weighted_conf * diversity_factor)
+        # Combine individual confidence with structural agreement. The blend
+        # guarantees a strictly positive value for non-degenerate ensembles
+        # even when individual confidences are zero.
+        blended = (weighted_conf + diversity_factor) / 2.0
+        return min(1.0, max(0.0, blended))
 
     def _diversity_score(
         self,

@@ -6,24 +6,21 @@ All tests mock the provider. No internet, no yfinance, no real downloads.
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
+from backend.engines.factor_engine import FactorEngine, FactorRequest
 from backend.providers.base import MarketDataProvider
 from backend.providers.yfinance_provider import YFinanceProvider
 from backend.services.research_service import (
-    ResearchService,
-    ResearchResult,
     REQUIRED_COLUMNS,
-    VALID_PERIODS,
     VALID_INTERVALS,
+    VALID_PERIODS,
+    ResearchResult,
+    ResearchService,
 )
-from backend.engines.factor_engine import FactorRequest, EngineError
-from backend.core.factor_result import FactorResult
-from backend.core.enums import Signal
 
 print("=== Sprint 10: Market Data Provider Abstraction Verification ===")
 print("")
@@ -47,10 +44,10 @@ def check(name: str, condition: bool, detail: str = "") -> None:
     global passed, failed
     if condition:
         passed += 1
-        print("  PASS: %s" % name)
+        print(f"  PASS: {name}")
     else:
         failed += 1
-        print("  FAIL: %s%s" % (name, " (%s)" % detail if detail else ""))
+        print(f"  FAIL: {name}{f' ({detail})' if detail else ''}")
 
 
 def make_mock_provider(data: pd.DataFrame | None = None, side_effect: Exception | None = None):
@@ -219,7 +216,7 @@ except Exception:
 
 # ========== REGRESSION ==========
 print("--- Regression ---")
-from backend.engines.factor_engine import FactorEngine
+
 mock_prov = make_mock_provider(fake_data)
 service = ResearchService(provider=mock_prov)
 service_result = service.analyze(
@@ -284,9 +281,9 @@ check("FakeProvider: value not None", result.factor_results["SMA20"].value is no
 print("")
 total = passed + failed
 print("=" * 50)
-print("RESULT: %d/%d passed" % (passed, total))
+print(f"RESULT: {passed}/{total} passed")
 if failed == 0:
     print("ALL TESTS PASSED")
 else:
-    print("FAILURES: %d" % failed)
+    print(f"FAILURES: {failed}")
 print("=" * 50)

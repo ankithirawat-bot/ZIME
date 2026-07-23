@@ -4,12 +4,10 @@ Scope: allocation engines, analytics, risk budget, integration, factory, edge ca
 140–170 total tests (written as integrated suite).
 """
 
-import pytest
 import numpy as np
+import pytest
 
 import backend.optimization as opt
-
-
 
 
 @pytest.fixture
@@ -139,7 +137,6 @@ class TestPortfolioAnalytics:
         assert not np.isnan(ana["expected_return"])
 
     def test_diversification_ratio(self):
-        corr = ((1.0, 0.2, 0.2), (0.2, 1.0, 0.2), (0.2, 0.2, 1.0))
         ret_v = (0.10, 0.10, 0.10)
         ws = (0.4, 0.4, 0.2)
         ana = opt.PortfolioAnalytics.calculate_analytics(ret_v, ws)

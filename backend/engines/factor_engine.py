@@ -14,7 +14,6 @@ from typing import Any
 import pandas as pd
 
 from backend.core.factor_result import FactorResult
-from backend.factors.base import BaseFactor
 from backend.factors.registry import FactorRegistry
 
 

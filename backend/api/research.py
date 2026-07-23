@@ -8,17 +8,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
 from backend.api.models import (
     EngineErrorResponse,
-    FactorRequestModel,
     FactorResultResponse,
     HealthResponse,
     ResearchRequest,
     ResearchResponse,
 )
+from backend.core.api_constants import HEALTH_ENDPOINT, ROUTE_RESEARCH
 from backend.engines.factor_engine import FactorRequest
-from backend.services.research_service import ResearchService, VALID_PERIODS, VALID_INTERVALS
+from backend.services.research_service import VALID_INTERVALS, VALID_PERIODS, ResearchService
 
 router = APIRouter(prefix=ROUTE_RESEARCH, tags=["research"])
 

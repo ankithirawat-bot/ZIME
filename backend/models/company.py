@@ -1,5 +1,5 @@
-from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
@@ -15,4 +15,3 @@ class Company(Base):
     exchange = Column(String)
     sector = Column(String)
     industry = Column(String)
-    

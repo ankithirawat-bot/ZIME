@@ -8,7 +8,6 @@ and returns the best candidate.
 from __future__ import annotations
 
 from backend.patterns.base import PatternDetector
-from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 from backend.patterns.detectors import (
     AscendingTriangleDetector,
     CupHandleDetector,
@@ -16,6 +15,7 @@ from backend.patterns.detectors import (
     HighTightFlagDetector,
     VCPDetector,
 )
+from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 
 
 class PatternEngine:

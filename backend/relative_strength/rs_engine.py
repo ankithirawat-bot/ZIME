@@ -8,8 +8,6 @@ Does NOT use RSI.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.relative_strength.models import (
     BenchmarkData,
     Leadership,
@@ -116,7 +114,7 @@ def analyze_relative_strength(snapshot: StockSnapshot) -> RelativeStrengthResult
     )
 
 
-def _weighted_return(data: BenchmarkData) -> Optional[float]:
+def _weighted_return(data: BenchmarkData) -> float | None:
     """Calculate weighted return across available timeframes.
 
     Weights: 1M=10%, 3M=20%, 6M=30%, 12M=40%.
@@ -193,8 +191,8 @@ def _score_vs_benchmark(
 
 
 def _score_distance_from_high(
-    current_price: Optional[float],
-    high_52w: Optional[float],
+    current_price: float | None,
+    high_52w: float | None,
     max_points: int,
 ) -> tuple[float, str]:
     """Score based on distance from 52-week high.

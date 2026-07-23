@@ -6,8 +6,7 @@ Request and response schemas for the research endpoints.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -85,11 +84,11 @@ class FactorResultResponse(BaseModel):
     factor_name: str
     factor_category: str
     symbol: str
-    value: Optional[float]
+    value: float | None
     signal: str
-    as_of: Optional[str]
-    confidence: Optional[float]
-    metadata: Optional[dict[str, Any]]
+    as_of: str | None
+    confidence: float | None
+    metadata: dict[str, Any] | None
 
 
 class EngineErrorResponse(BaseModel):

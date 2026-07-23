@@ -6,8 +6,6 @@ Detects rounded recovery followed by shallow pullback.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.patterns.base import PatternDetector
 from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 
@@ -136,12 +134,12 @@ class CupHandleDetector(PatternDetector):
             warnings.append("Weak volume decline in handle")
             return 5
 
-    def _calc_breakout(self, snap: PatternSnapshot) -> Optional[float]:
+    def _calc_breakout(self, snap: PatternSnapshot) -> float | None:
         if snap.pivot_price is None:
             return None
         return snap.pivot_price * 1.01
 
-    def _calc_stop(self, snap: PatternSnapshot) -> Optional[float]:
+    def _calc_stop(self, snap: PatternSnapshot) -> float | None:
         if snap.pivot_price is None:
             return None
         atr = snap.atr if snap.atr is not None else 0

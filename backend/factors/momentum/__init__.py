@@ -598,11 +598,11 @@ class WilliamsR(BaseFactor):
             )
 
         h = high.loc[common_idx].tail(self._period)
-        l = low.loc[common_idx].tail(self._period)
+        low_vals = low.loc[common_idx].tail(self._period)
         c = close.loc[common_idx].tail(self._period)
 
         highest_high = float(h.max())
-        lowest_low = float(l.min())
+        lowest_low = float(low_vals.min())
         latest_close = float(c.iloc[-1])
 
         rng = highest_high - lowest_low
@@ -789,12 +789,12 @@ class StochasticOscillator(BaseFactor):
             )
 
         h = high.loc[common_idx]
-        l = low.loc[common_idx]
+        low_vals = low.loc[common_idx]
         c = close.loc[common_idx]
 
         # Rolling highest high and lowest low
         highest = h.rolling(window=self._k_period).max()
-        lowest = l.rolling(window=self._k_period).min()
+        lowest = low_vals.rolling(window=self._k_period).min()
 
         rng = highest - lowest
         # Avoid division by zero

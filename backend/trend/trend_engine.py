@@ -8,8 +8,6 @@ and 52-week proximity.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.trend.models import TrendQuality, TrendResult, TrendSnapshot, TrendStage
 
 # Scoring weights
@@ -271,7 +269,7 @@ class TrendQualityEngine:
     def _score_high_proximity(
         self,
         current_price: float,
-        high_52w: Optional[float],
+        high_52w: float | None,
     ) -> tuple[float, list[str]]:
         """Score based on distance from 52-week high.
 

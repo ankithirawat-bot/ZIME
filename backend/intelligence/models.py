@@ -328,3 +328,13 @@ class EvaluatableModel(Protocol):
 
     def evaluate(self, request: EvaluationRequest) -> EvaluationResult:
         ...
+
+
+# Re-export for backward compatibility - lazy import to avoid circular dependency
+def __getattr__(name: str):
+    if name == "ChampionChallengerSelector":
+        from backend.intelligence.selection import (
+            ChampionChallengerSelector as _CCSelector,
+        )
+        return _CCSelector
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

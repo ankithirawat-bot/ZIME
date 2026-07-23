@@ -6,12 +6,11 @@ Data classes for relative strength analysis.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from dataclasses import dataclass
+from enum import StrEnum
 
 
-class Leadership(str, Enum):
+class Leadership(StrEnum):
     """Leadership classification."""
 
     LEADER = "Leader"
@@ -34,10 +33,10 @@ class BenchmarkData:
     """
 
     name: str
-    returns_1m: Optional[float] = None
-    returns_3m: Optional[float] = None
-    returns_6m: Optional[float] = None
-    returns_1y: Optional[float] = None
+    returns_1m: float | None = None
+    returns_3m: float | None = None
+    returns_6m: float | None = None
+    returns_1y: float | None = None
 
 
 @dataclass(frozen=True)
@@ -59,12 +58,12 @@ class StockSnapshot:
     symbol: str
     stock: BenchmarkData
     market_benchmark: BenchmarkData
-    sector_benchmark: Optional[BenchmarkData] = None
-    industry_benchmark: Optional[BenchmarkData] = None
-    high_52w: Optional[float] = None
-    low_52w: Optional[float] = None
-    current_price: Optional[float] = None
-    history_length: Optional[int] = None
+    sector_benchmark: BenchmarkData | None = None
+    industry_benchmark: BenchmarkData | None = None
+    high_52w: float | None = None
+    low_52w: float | None = None
+    current_price: float | None = None
+    history_length: int | None = None
 
 
 @dataclass(frozen=True)

@@ -4,8 +4,6 @@ Central registry for factor discovery and lookup.
 
 from __future__ import annotations
 
-from typing import Type
-
 from backend.factors.base import BaseFactor
 
 
@@ -36,10 +34,10 @@ class FactorRegistry:
         KeyError: If a factor name is not found in the registry.
     """
 
-    _registry: dict[str, Type[BaseFactor]] = {}
+    _registry: dict[str, type[BaseFactor]] = {}
 
     @classmethod
-    def register(cls, factor_cls: Type[BaseFactor]) -> None:
+    def register(cls, factor_cls: type[BaseFactor]) -> None:
         """Register a factor class in the global registry.
 
         The factor's name class attribute is used as the registry
@@ -63,7 +61,7 @@ class FactorRegistry:
         cls._registry[name] = factor_cls
 
     @classmethod
-    def get(cls, name: str) -> Type[BaseFactor]:
+    def get(cls, name: str) -> type[BaseFactor]:
         """Retrieve a factor class by its unique name.
 
         Args:
@@ -85,7 +83,7 @@ class FactorRegistry:
             ) from None
 
     @classmethod
-    def all(cls) -> dict[str, Type[BaseFactor]]:
+    def all(cls) -> dict[str, type[BaseFactor]]:
         """Return a shallow copy of all registered factors.
 
         Returns:

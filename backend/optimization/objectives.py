@@ -33,10 +33,12 @@ class ObjectiveFunctions:
     def max_sharpe(
         request: OptimizationRequest,
         risk_free_rate: float = 0.02,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Maximum Sharpe ratio objective.
 
-        Maximizes (expected_return - risk_free_rate) / volatility
+        Maximizes (expected_return - risk_free_rate) / volatility.
+        Accepts optional ``weights`` for caller consistency.
         """
         n = len(request.asset_names)
         if n < 2:
@@ -65,6 +67,7 @@ class ObjectiveFunctions:
         try:
             # For simplicity, we return the objective function and gradient/hessian as None
             # In a full implementation, we would compute analytical gradients
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MAX_SHARPE,
                 value=0.0,  # Placeholder - actual value depends on solution
@@ -78,21 +81,25 @@ class ObjectiveFunctions:
     @staticmethod
     def min_variance(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Minimum variance objective.
 
-        Minimizes w.T @ Sigma @ w
+        Minimizes w.T @ Sigma @ w.
+        Accepts an optional ``weights`` argument for backward compatibility with
+        optimizer call sites that invoke ``objective(request, weights)``.
         """
         n = len(request.asset_names)
         if n < 2:
             raise InsufficientAssetsError(n, 2)
 
-        def objective(weights: tuple[float, ...]) -> float:
-            w = np.array(weights)
+        def objective(w: tuple[float, ...]) -> float:
+            arr = np.array(w)
             sigma = np.array(request.covariance_matrix)
-            return np.dot(w, np.dot(sigma, w))
+            return np.dot(arr, np.dot(sigma, arr))
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MIN_VARIANCE,
                 value=0.0,
@@ -106,21 +113,23 @@ class ObjectiveFunctions:
     @staticmethod
     def max_return(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Maximum return objective.
 
-        Maximizes w.T @ mu
+        Maximizes w.T @ mu. Accepts optional ``weights`` for caller consistency.
         """
         n = len(request.asset_names)
         if n < 2:
             raise InsufficientAssetsError(n, 2)
 
-        def objective(weights: tuple[float, ...]) -> float:
-            w = np.array(weights)
+        def objective(w: tuple[float, ...]) -> float:
+            arr = np.array(w)
             mu = np.array(request.expected_returns)
-            return -np.dot(w, mu)  # Negative for minimization
+            return -np.dot(arr, mu)
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MAX_RETURN,
                 value=0.0,
@@ -135,6 +144,7 @@ class ObjectiveFunctions:
     def max_sortino(
         request: OptimizationRequest,
         risk_free_rate: float = 0.02,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Maximum Sortino ratio objective.
 
@@ -160,6 +170,7 @@ class ObjectiveFunctions:
             return -(port_return - risk_free_rate) / port_vol
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MAX_SORTINO,
                 value=0.0,
@@ -174,6 +185,7 @@ class ObjectiveFunctions:
     def min_cvar(
         request: OptimizationRequest,
         confidence_level: float = 0.95,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Minimum CVaR (Conditional Value at Risk) objective.
 
@@ -208,6 +220,7 @@ class ObjectiveFunctions:
                 return port_var
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MIN_CVAR,
                 value=0.0,
@@ -221,30 +234,30 @@ class ObjectiveFunctions:
     @staticmethod
     def risk_parity(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Risk parity objective.
 
-        Minimizes the sum of squared differences in risk contributions
+        Minimizes the sum of squared differences in risk contributions.
+        Accepts optional ``weights`` for caller consistency.
         """
         n = len(request.asset_names)
         if n < 2:
             raise InsufficientAssetsError(n, 2)
 
-        def objective(weights: tuple[float, ...]) -> float:
-            w = np.array(weights)
+        def objective(w: tuple[float, ...]) -> float:
+            arr = np.array(w)
             sigma = np.array(request.covariance_matrix)
-
-            # Risk contribution of each asset: w_i * (Sigma @ w)_i
-            port_var = np.dot(w, np.dot(sigma, w))
+            port_var = np.dot(arr, np.dot(sigma, arr))
             if port_var <= EPSILON:
                 return np.inf
-            marginal_contrib = np.dot(sigma, w)
-            risk_contrib = w * marginal_contrib
-            # Target equal risk contribution: 1/n * port_var
+            marginal_contrib = np.dot(sigma, arr)
+            risk_contrib = arr * marginal_contrib
             target = port_var / n
             return np.sum((risk_contrib - target) ** 2)
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.RISK_PARITY,
                 value=0.0,
@@ -258,10 +271,12 @@ class ObjectiveFunctions:
     @staticmethod
     def max_diversification(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Maximum diversification ratio objective.
 
-        Maximizes (weighted average volatility) / portfolio volatility
+        Maximizes (weighted average volatility) / portfolio volatility.
+        Accepts optional ``weights`` for caller consistency.
         """
         n = len(request.asset_names)
         if n < 2:
@@ -287,6 +302,7 @@ class ObjectiveFunctions:
             return -(weighted_avg_vol / port_vol)  # Negative for minimization
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.MAX_DIVERSIFICATION,
                 value=0.0,
@@ -300,6 +316,7 @@ class ObjectiveFunctions:
     @staticmethod
     def kelly(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Kelly criterion objective.
 
@@ -324,6 +341,7 @@ class ObjectiveFunctions:
             return -(port_return - 0.5 * port_var / (1 + port_return))
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.KELLY,
                 value=0.0,
@@ -339,6 +357,7 @@ class ObjectiveFunctions:
         request: OptimizationRequest,
         risk_aversion: float = 1.0,
         tau: float = 0.05,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Black-Litterman objective (framework).
 
@@ -356,6 +375,7 @@ class ObjectiveFunctions:
             return np.dot(w, np.dot(sigma, w))
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.BLACK_LITTERMAN,
                 value=0.0,
@@ -369,6 +389,7 @@ class ObjectiveFunctions:
     @staticmethod
     def hierarchical_risk_parity(
         request: OptimizationRequest,
+        weights: tuple[float, ...] | None = None,
     ) -> ObjectiveResult:
         """Hierarchical Risk Parity (HRP) objective (framework).
 
@@ -391,6 +412,7 @@ class ObjectiveFunctions:
             return np.sum((risk_contrib - target) ** 2)
 
         try:
+            _ = objective(weights) if weights is not None else None
             return ObjectiveResult(
                 objective_type=ObjectiveType.HRP,
                 value=0.0,

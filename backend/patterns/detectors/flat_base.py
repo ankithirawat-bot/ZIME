@@ -6,8 +6,6 @@ Detects tight price ranges near highs with low volatility.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from backend.patterns.base import PatternDetector
 from backend.patterns.models import PatternResult, PatternSnapshot, PatternType
 

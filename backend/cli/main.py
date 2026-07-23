@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from backend.cli.formatter import format_error, format_result
-from backend.engines.factor_engine import FactorRequest
 from backend.core.constants import DEFAULT_DATA_INTERVAL, DEFAULT_DATA_PERIOD
+from backend.engines.factor_engine import FactorRequest
 from backend.services.research_service import (
-    ResearchService,
     VALID_INTERVALS,
     VALID_PERIODS,
+    ResearchService,
 )
 
 
@@ -39,13 +39,13 @@ def parse_factor(factor_str: str) -> FactorRequest:
     factor_name = parts[0].strip().lower()
 
     if not factor_name:
-        raise ValueError("Factor name cannot be empty in '%s'" % factor_str)
+        raise ValueError(f"Factor name cannot be empty in '{factor_str}'")
 
     params: dict[str, int | float] = {}
     if len(parts) == 2:
         param_str = parts[1].strip()
         if not param_str:
-            raise ValueError("Parameter value cannot be empty in '%s'" % factor_str)
+            raise ValueError(f"Parameter value cannot be empty in '{factor_str}'")
         try:
             params["period"] = int(param_str)
         except ValueError:
@@ -53,11 +53,11 @@ def parse_factor(factor_str: str) -> FactorRequest:
                 params["period"] = float(param_str)
             except ValueError:
                 raise ValueError(
-                    "Invalid parameter '%s' in '%s'. Must be a number." % (param_str, factor_str)
+                    f"Invalid parameter '{param_str}' in '{factor_str}'. Must be a number."
                 )
     elif len(parts) > 2:
         raise ValueError(
-            "Invalid factor format '%s'. Expected 'NAME' or 'NAME:PERIOD'." % factor_str
+            f"Invalid factor format '{factor_str}'. Expected 'NAME' or 'NAME:PERIOD'."
         )
 
     return FactorRequest(factor=factor_name, params=params)
@@ -92,14 +92,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--period",
         type=str,
         default=DEFAULT_DATA_PERIOD,
-        help="Historical period (default: %s). Valid: %%s" % DEFAULT_DATA_PERIOD % ", ".join(sorted(VALID_PERIODS)),
+        help=f"Historical period (default: {DEFAULT_DATA_PERIOD}). Valid: " + ", ".join(sorted(VALID_PERIODS)),
     )
 
     analyze_parser.add_argument(
         "--interval",
         type=str,
         default=DEFAULT_DATA_INTERVAL,
-        help="Data interval (default: %s). Valid: %%s" % DEFAULT_DATA_INTERVAL % ", ".join(sorted(VALID_INTERVALS)),
+        help=f"Data interval (default: {DEFAULT_DATA_INTERVAL}). Valid: " + ", ".join(sorted(VALID_INTERVALS)),
     )
 
     analyze_parser.add_argument(
@@ -148,7 +148,7 @@ def run_analyze(args: argparse.Namespace) -> int:
         print("\nAnalysis cancelled.", file=sys.stderr)
         return 130
     except Exception as exc:
-        print(format_error("Unexpected error: %s" % exc), file=sys.stderr)
+        print(format_error(f"Unexpected error: {exc}"), file=sys.stderr)
         return 1
 
 
@@ -171,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "analyze":
         return run_analyze(args)
 
-    print(format_error("Unknown command: %s" % args.command), file=sys.stderr)
+    print(format_error(f"Unknown command: {args.command}"), file=sys.stderr)
     return 1
 
 

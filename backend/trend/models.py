@@ -7,11 +7,10 @@ Data classes for structural trend quality analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class TrendQuality(str, Enum):
+class TrendQuality(StrEnum):
     """Trend quality classification."""
 
     EXCEPTIONAL = "Exceptional"
@@ -21,7 +20,7 @@ class TrendQuality(str, Enum):
     BROKEN = "Broken"
 
 
-class TrendStage(str, Enum):
+class TrendStage(StrEnum):
     """Trend lifecycle stage."""
 
     EARLY = "Early"
@@ -54,20 +53,20 @@ class TrendSnapshot:
     """
 
     current_price: float
-    ema20: Optional[float] = None
-    ema50: Optional[float] = None
-    sma150: Optional[float] = None
-    sma200: Optional[float] = None
-    high_52w: Optional[float] = None
-    low_52w: Optional[float] = None
-    slope_ema20: Optional[float] = None
-    slope_ema50: Optional[float] = None
-    slope_sma150: Optional[float] = None
-    slope_sma200: Optional[float] = None
-    higher_high_count: Optional[int] = None
-    higher_low_count: Optional[int] = None
-    trend_age: Optional[int] = None
-    history_length: Optional[int] = None
+    ema20: float | None = None
+    ema50: float | None = None
+    sma150: float | None = None
+    sma200: float | None = None
+    high_52w: float | None = None
+    low_52w: float | None = None
+    slope_ema20: float | None = None
+    slope_ema50: float | None = None
+    slope_sma150: float | None = None
+    slope_sma200: float | None = None
+    higher_high_count: int | None = None
+    higher_low_count: int | None = None
+    trend_age: int | None = None
+    history_length: int | None = None
 
 
 @dataclass(frozen=True)

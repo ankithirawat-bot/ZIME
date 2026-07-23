@@ -81,7 +81,6 @@ class RiskParity:
 
     def allocate(self, volatilities: tuple[float, ...], corr: tuple[tuple[float, ...], ...]) -> tuple[float, ...]:
         vols = np.array(volatilities)
-        cov = np.array(corr) * np.outer(vols, vols)
         inv_vol = 1.0 / vols
         weights = inv_vol / np.sum(inv_vol)
         # NaN-safe normalization
@@ -101,10 +100,19 @@ class VolatilityTarget:
         if target_vol <= 0 or not volatilities:
             n = len(volatilities)
             return tuple([1.0 / max(n, 1)] * n)
-        lev = target_vol / np.sqrt(np.array(corr) @ (np.array(volatilities) ** 2))
-        lev = min(lev.item(), 1.0)
-        weights = np.array(volatilities) * lev
-        return tuple(weights / weights.sum())
+        vols = np.array(volatilities)
+        corr_mat = np.array(corr)
+        # Covariance matrix: Sigma = diag(vols) @ corr @ diag(vols).
+        cov = corr_mat * (vols[:, None] * vols[None, :])
+        # Equal-weight base scaled to portfolio risk via leverage.
+        equal_base = np.full(len(vols), 1.0 / len(vols))
+        port_vol = float(np.sqrt(equal_base @ cov @ equal_base))
+        lev = 1.0 if port_vol <= 0 else min(1.0, target_vol / port_vol)
+        weights = lev * equal_base
+        total = float(weights.sum())
+        if total > 0:
+            weights = weights / total
+        return tuple(weights.tolist())
 
 
 

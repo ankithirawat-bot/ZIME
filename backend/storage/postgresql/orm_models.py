@@ -19,8 +19,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from backend.core.constants import DEFAULT_EXCHANGE, DEFAULT_INSTRUMENT_TYPE
 from sqlalchemy.orm import DeclarativeBase
+
+from backend.core.constants import DEFAULT_INSTRUMENT_TYPE
 
 
 class Base(DeclarativeBase):

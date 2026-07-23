@@ -903,7 +903,6 @@ class ATR(BaseFactor):
             ValueError: If prices is missing, wrong type, missing
                         columns, or insufficient data.
         """
-        import numpy as np
 
         prices = kwargs.get("prices")
         if prices is None:
@@ -955,13 +954,13 @@ class ATR(BaseFactor):
             )
 
         h = high.loc[common_idx]
-        l = low.loc[common_idx]
+        low_vals = low.loc[common_idx]
         c = close.loc[common_idx]
 
         prev_close = c.shift(1)
-        tr1 = h - l
+        tr1 = h - low_vals
         tr2 = (h - prev_close).abs()
-        tr3 = (l - prev_close).abs()
+        tr3 = (low_vals - prev_close).abs()
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
         # Drop first row (NaN from prev_close) then take last period
@@ -1156,7 +1155,6 @@ class BollingerBands(BaseFactor):
             ValueError: If prices is missing, wrong type, missing
                         close column, or insufficient data.
         """
-        import numpy as np
 
         prices = kwargs.get("prices")
         if prices is None:
