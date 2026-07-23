@@ -1,0 +1,215 @@
+QMainWindow,
+QWidget#centralContainer {
+    background-color: #121317;
+    color: #E6E8EE;
+    font-family: "Segoe UI", "Inter", sans-serif;
+    font-size: 10pt;
+}
+
+QWidget#navigationPanel {
+    background-color: #0E1014;
+    border-right: 1px solid #1F232B;
+}
+
+QListWidget#navigationList {
+    background-color: transparent;
+    border: none;
+    color: #C9CDD6;
+    outline: 0;
+    padding: 8px 0;
+}
+
+QListWidget#navigationList::item {
+    height: 40px;
+    padding-left: 18px;
+    padding-right: 18px;
+    border: none;
+    border-left: 3px solid transparent;
+}
+
+QListWidget#navigationList::item:hover {
+    background-color: #1A1D24;
+    color: #E6E8EE;
+}
+
+QListWidget#navigationList::item:selected {
+    background-color: #1F242E;
+    color: #FFFFFF;
+    border-left: 3px solid #4C8BF5;
+}
+
+QStackedWidget#contentStack {
+    background-color: #15181F;
+}
+
+QLabel#placeholderTitle {
+    color: #FFFFFF;
+    font-size: 28pt;
+    font-weight: 600;
+}
+
+QLabel#placeholderSubtitle {
+    color: #8A91A1;
+    font-size: 11pt;
+    margin-top: 6px;
+}
+
+QStatusBar#statusBar {
+    background-color: #0E1014;
+    color: #9BA2B3;
+    border-top: 1px solid #1F232B;
+}
+
+QLabel#statusBarLabel {
+    color: #9BA2B3;
+    padding-left: 12px;
+}
+
+QScrollBar:vertical,
+QScrollBar:horizontal {
+    background: #15181F;
+    border: none;
+    width: 10px;
+    height: 10px;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+    background: #2A2F3A;
+    border-radius: 4px;
+    min-height: 24px;
+    min-width: 24px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+    background: #3A4150;
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line {
+    border: none;
+    background: none;
+    height: 0;
+    width: 0;
+}
+
+QFrame#dashboardCard {
+    background-color: #1B1F26;
+    border: 1px solid #242933;
+    border-radius: 8px;
+}
+
+QFrame#dashboardCard[cardTitle="Application"] {
+    border-top: 3px solid #4C8BF5;
+}
+
+QFrame#dashboardCard[cardTitle="System"] {
+    border-top: 3px solid #34C77B;
+}
+
+QFrame#dashboardCard[cardTitle="Status"] {
+    border-top: 3px solid #E0A33E;
+}
+
+QFrame#dashboardCard[cardTitle="Recent Activity"] {
+    border-top: 3px solid #C267CC;
+}
+
+QLabel#cardTitleLabel {
+    color: #FFFFFF;
+    font-size: 13pt;
+    font-weight: 600;
+}
+
+QLabel#cardRowKey {
+    color: #8A91A1;
+    font-size: 10pt;
+}
+
+QLabel#cardRowValue {
+    color: #E6E8EE;
+    font-size: 10pt;
+    font-weight: 500;
+}
+
+QLabel#dashboardHeader {
+    color: #FFFFFF;
+    font-size: 18pt;
+    font-weight: 600;
+}
+
+QLabel#dashboardFooterLabel {
+    color: #6E7585;
+    font-size: 9pt;
+}
+
+QFrame#dashboardCard[cardTitle="marketIndices"] {
+    border-top: 3px solid #4C8BF5;
+}
+
+QFrame#dashboardCard[cardTitle="marketMovers"] {
+    border-top: 3px solid #E0A33E;
+}
+
+QFrame#dashboardCard[cardTitle="marketActive"] {
+    border-top: 3px solid #34C77B;
+}
+
+QFrame#dashboardCard[cardTitle="marketBreadth"] {
+    border-top: 3px solid #C267CC;
+}
+
+QLabel#marketOverviewTitle {
+    color: #FFFFFF;
+    font-size: 18pt;
+    font-weight: 600;
+}
+
+QLabel#marketOverviewSubtitle {
+    color: #8A91A1;
+    font-size: 10pt;
+}
+
+QPushButton#marketOverviewRefreshButton {
+    background-color: #21262E;
+    color: #E6E8EE;
+    padding: 8px 18px;
+    border: 1px solid #2A2F3A;
+    border-radius: 4px;
+}
+
+QPushButton#marketOverviewRefreshButton:hover {
+    background-color: #2A2F3A;
+    border-color: #3A4150;
+}
+
+QPushButton#marketOverviewRefreshButton:pressed {
+    background-color: #1A1D24;
+}
+
+QFrame#marketOverviewFooter {
+    background-color: #1B1F26;
+    border: 1px solid #242933;
+    border-radius: 6px;
+}
+
+QLabel#marketOverviewFooterLabel {
+    color: #6E7585;
+    font-size: 9pt;
+}
+
+QLabel#marketOverviewFooterValue {
+    color: #C9CDD6;
+    font-size: 10pt;
+    font-weight: 500;
+}
+
+QLabel#marketOverviewStatusLabel {
+    color: #8A91A1;
+    font-size: 10pt;
+}
+
+QLabel#marketOverviewStatusDot {
+    font-size: 14pt;
+}
